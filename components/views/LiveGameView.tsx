@@ -3,8 +3,9 @@ import { Session, Game, PointUpdate, View } from '../../types';
 import * as fb from '../../services/firebaseService';
 import { Header } from '../ui/Header';
 import { Modal } from '../ui/Modal';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Area } from 'recharts';
 import { UndoIcon } from '../ui/Icons';
+import { ChartModeToggle, CustomChartTooltip } from '../ui/ChartModeToggle';
 
 declare const Recharts: any;
 
@@ -18,6 +19,7 @@ interface LiveGameViewProps {
 export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updates, navigate }) => {
     const [scoresToAdd, setScoresToAdd] = useState<{ [playerId: string]: number }>({});
     const [modal, setModal] =useState<{ isOpen: boolean; title: string; message: string; onConfirm?: (confirmed: boolean) => void }>({ isOpen: false, title: '', message: '' });
+    const [chartMode, setChartMode] = useState<'cumulative' | 'perUpdate'>('cumulative');
 
     const sortedPlayers = useMemo(() =>
         [...session.players].sort((a, b) => (game.gameScores[b.id] || 0) - (game.gameScores[a.id] || 0)),
@@ -29,17 +31,21 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
         const cumulativeScores: { [pid: string]: number } = {};
         
         updates.forEach((update, index) => {
-            session.players.forEach(p => {
-                cumulativeScores[p.id] = (cumulativeScores[p.id] || 0) + (update.scores?.[p.id] || 0);
-            });
             const dataPoint: any = { name: `Update ${index + 1}` };
-            session.players.forEach(p => {
-                dataPoint[p.name] = cumulativeScores[p.id];
-            });
+            if (chartMode === 'cumulative') {
+                session.players.forEach(p => {
+                    cumulativeScores[p.id] = (cumulativeScores[p.id] || 0) + (update.scores?.[p.id] || 0);
+                    dataPoint[p.name] = cumulativeScores[p.id];
+                });
+            } else { // 'perUpdate'
+                session.players.forEach(p => {
+                    dataPoint[p.name] = update.scores?.[p.id] || 0;
+                });
+            }
             data.push(dataPoint);
         });
         return data;
-    }, [updates, session.players]);
+    }, [updates, session.players, chartMode]);
 
     const updateScore = (playerId: string, value: number) => {
         setScoresToAdd(prev => ({ ...prev, [playerId]: value }));
@@ -111,17 +117,40 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                     </div>
                 </div>
                 <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
-                    <h3 className="text-xl font-semibold mb-4">Punkteverlauf (Dieses Spiel)</h3>
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
+                        <h3 className="text-xl font-semibold">Punkteverlauf (Dieses Spiel)</h3>
+                        <ChartModeToggle
+                            currentMode={chartMode}
+                            onChange={(mode) => setChartMode(mode)}
+                            options={[
+                                { value: 'perUpdate', label: 'Pro Update' },
+                                { value: 'cumulative', label: 'Kumulativ' },
+                            ]}
+                        />
+                    </div>
                     <div className="relative h-96">
                         {chartData.length > 0 && (
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={chartData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.2)" />
-                                <XAxis dataKey="name" stroke="#94a3b8" />
-                                <YAxis stroke="#94a3b8" />
-                                <Tooltip contentStyle={{ backgroundColor: '#0F172A', border: '1px solid #334155' }} />
+                            <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                <defs>
+                                    {session.players.map(p => (
+                                        <linearGradient key={`color-${p.id}`} id={`color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
+                                            <stop offset="95%" stopColor={p.color} stopOpacity={0}/>
+                                        </linearGradient>
+                                    ))}
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.1)" />
+                                <XAxis dataKey="name" stroke="#64748b" />
+                                <YAxis stroke="#64748b" />
+                                <Tooltip content={<CustomChartTooltip />} />
                                 <Legend wrapperStyle={{ color: '#cbd5e1' }} />
-                                {session.players.map(p => <Line key={p.id} type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={2} />)}
+                                {session.players.map(p => (
+                                    <React.Fragment key={p.id}>
+                                        <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')})`} />
+                                        <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 6, stroke: 'rgba(255,255,255,0.3)', strokeWidth: 4}} />
+                                    </React.Fragment>
+                                ))}
                             </LineChart>
                         </ResponsiveContainer>
                         )}

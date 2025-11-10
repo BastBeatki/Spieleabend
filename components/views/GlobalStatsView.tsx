@@ -2,8 +2,9 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Player, Category, Session, View, Game } from '../../types';
 import * as fb from '../../services/firebaseService';
 import { Header } from '../ui/Header';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Area } from 'recharts';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { ChartModeToggle, CustomChartTooltip } from '../ui/ChartModeToggle';
 
 declare const Recharts: any;
 
@@ -16,17 +17,26 @@ interface GlobalStatsViewProps {
 
 const getRankBadge = (rank: number) => {
     switch(rank) {
-        case 1: return 'bg-green-500 text-slate-900 font-bold';
-        case 2: return 'bg-blue-500 text-white';
-        case 3: return 'bg-purple-500 text-white';
-        default: return 'bg-slate-700 text-slate-300';
+        case 1: return 'from-green-400 to-emerald-600';
+        case 2: return 'from-blue-400 to-cyan-600';
+        case 3: return 'from-purple-400 to-indigo-600';
+        default: return 'from-slate-600 to-slate-700';
     }
 }
+
+const getRankText = (rank: number) => {
+     switch(rank) {
+        case 1: return 'text-slate-900 font-bold';
+        default: return 'text-white';
+    }
+}
+
 
 export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categories, sessions, navigate }) => {
     const [allGames, setAllGames] = useState<(Game & { sessionName: string })[] | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+    const [chartMode, setChartMode] = useState<'perSession' | 'cumulative'>('perSession');
 
      useEffect(() => {
         fb.getAllGames().then(games => {
@@ -39,8 +49,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
         const scores: { [playerId: string]: number } = {};
         sessions.forEach(s => {
             Object.entries(s.totalScores).forEach(([pid, score]) => {
-                // FIX: Operator '+' cannot be applied to types 'number' and 'unknown'.
-                scores[pid] = (scores[pid] || 0) + (score as number);
+                scores[pid] = (scores[pid] || 0) + score;
             });
         });
         return players
@@ -55,28 +64,32 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
         const cumulativeScores: { [pid: string]: number } = {};
         
         sortedSessions.forEach(session => {
-            players.forEach(p => {
-                cumulativeScores[p.id] = (cumulativeScores[p.id] || 0) + (session.totalScores[p.id] || 0);
-            });
             const dataPoint: any = { name: session.name };
-            players.forEach(p => {
-                dataPoint[p.name] = cumulativeScores[p.id];
-            });
+            if (chartMode === 'cumulative') {
+                 players.forEach(p => {
+                    cumulativeScores[p.id] = (cumulativeScores[p.id] || 0) + (session.totalScores[p.id] || 0);
+                    dataPoint[p.name] = cumulativeScores[p.id];
+                });
+            } else { // 'perSession'
+                players.forEach(p => {
+                    dataPoint[p.name] = session.totalScores[p.id] || 0;
+                });
+            }
             data.push(dataPoint);
         });
         return data;
-    }, [sortedSessions, players]);
+    }, [sortedSessions, players, chartMode]);
 
     const categoryStats = useMemo(() => {
         if (!selectedCategoryId || !allGames) return null;
 
         const filteredGames = allGames.filter(g => g.categoryId === selectedCategoryId);
+        const sortedFilteredGames = [...filteredGames].sort((a,b) => a.createdAt.toMillis() - b.createdAt.toMillis());
         
         const leaderboardScores: { [pid: string]: number } = {};
         filteredGames.forEach(g => {
             Object.entries(g.gameScores).forEach(([pid, score]) => {
-                // FIX: Operator '+' cannot be applied to types 'number' and 'unknown'.
-                leaderboardScores[pid] = (leaderboardScores[pid] || 0) + (score as number);
+                leaderboardScores[pid] = (leaderboardScores[pid] || 0) + score;
             });
         });
         const leaderboard = players
@@ -86,19 +99,23 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
 
         const timelineData: any[] = [{ name: 'Start', ...players.reduce((acc, p) => ({...acc, [p.name]: 0}), {}) }];
         const cumulativeScores: { [pid: string]: number } = {};
-        filteredGames.forEach(game => {
-             players.forEach(p => {
-                cumulativeScores[p.id] = (cumulativeScores[p.id] || 0) + (game.gameScores[p.id] || 0);
-            });
+        sortedFilteredGames.forEach(game => {
             const dataPoint: any = { name: `${game.name} (${game.sessionName})` };
-            players.forEach(p => {
-                dataPoint[p.name] = cumulativeScores[p.id];
-            });
+            if (chartMode === 'cumulative') {
+                 players.forEach(p => {
+                    cumulativeScores[p.id] = (cumulativeScores[p.id] || 0) + (game.gameScores[p.id] || 0);
+                    dataPoint[p.name] = cumulativeScores[p.id];
+                });
+            } else { // 'perGame'
+                players.forEach(p => {
+                    dataPoint[p.name] = game.gameScores[p.id] || 0;
+                });
+            }
             timelineData.push(dataPoint);
         });
         
         return { leaderboard, timelineData };
-    }, [selectedCategoryId, allGames, players]);
+    }, [selectedCategoryId, allGames, players, chartMode]);
 
 
     if (isLoading) {
@@ -115,7 +132,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                         {globalLeaderboard.map((p, index) => (
                              <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg shadow-md">
                                 <div className="w-10 text-center font-bold">
-                                   <span className={`w-8 h-8 flex items-center justify-center rounded-full ${getRankBadge(index + 1)}`}>{index + 1}</span>
+                                   <span className={`w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br ${getRankBadge(index + 1)} ${getRankText(index + 1)}`}>{index + 1}</span>
                                 </div>
                                 <div className="flex-grow flex items-center gap-3 ml-3">
                                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color }}></span>
@@ -127,26 +144,48 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                     </div>
                 </div>
                 <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
-                    <h3 className="text-xl font-semibold mb-4">Punkteverlauf über alle Sessions</h3>
-                    <div className="relative h-80 md:h-96 mb-8">
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
+                        <h3 className="text-xl font-semibold">Punkteverlauf über alle Sessions</h3>
+                         <ChartModeToggle
+                            currentMode={chartMode}
+                            onChange={(mode) => setChartMode(mode)}
+                            options={[
+                                { value: 'perSession', label: 'Pro Session' },
+                                { value: 'cumulative', label: 'Kumulativ' },
+                            ]}
+                        />
+                    </div>
+                    <div className="relative h-80 md:h-96">
                         {timelineData.length > 1 && (
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={timelineData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.2)" />
-                                <XAxis dataKey="name" stroke="#94a3b8" tick={{ fontSize: 12 }} />
-                                <YAxis stroke="#94a3b8" />
-                                <Tooltip contentStyle={{ backgroundColor: '#0F172A', border: '1px solid #334155' }} />
-                                <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                            <LineChart data={timelineData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                <defs>
+                                    {players.map(p => (
+                                        <linearGradient key={`color-${p.id}`} id={`color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
+                                            <stop offset="95%" stopColor={p.color} stopOpacity={0}/>
+                                        </linearGradient>
+                                    ))}
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.1)" />
+                                <XAxis dataKey="name" stroke="#64748b" tick={{ fontSize: 12 }} angle={-20} textAnchor="end" height={60} />
+                                <YAxis stroke="#64748b" />
+                                <Tooltip content={<CustomChartTooltip />} />
+                                <Legend wrapperStyle={{ color: '#cbd5e1', paddingTop: '20px' }} />
                                 {players.map(p => (
-                                    <Line key={p.id} type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={2} dot={{r: 3}} activeDot={{r: 6}} />
+                                    <React.Fragment key={p.id}>
+                                        <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')})`} />
+                                        <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 6, stroke: 'rgba(255,255,255,0.3)', strokeWidth: 4}} />
+                                    </React.Fragment>
                                 ))}
                             </LineChart>
                         </ResponsiveContainer>
                         )}
                     </div>
-
-                    <h3 className="text-xl font-semibold mb-2 border-t border-slate-700 pt-6">Statistiken nach Kategorie</h3>
-                    <p className="text-slate-400 mb-4">Wähle eine Kategorie, um die Bestenliste und den Punkteverlauf nur für diese Spiele anzuzeigen.</p>
+                </div>
+                <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
+                    <h3 className="text-xl font-semibold mb-2 border-b border-slate-700 pb-4">Statistiken nach Kategorie</h3>
+                    <p className="text-slate-400 my-4">Wähle eine Kategorie, um die Bestenliste und den Punkteverlauf nur für diese Spiele anzuzeigen.</p>
                     <select value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 mb-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
                         <option value="">Kategorie auswählen</option>
                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -160,7 +199,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                                 {categoryStats.leaderboard.length > 0 ? categoryStats.leaderboard.map((p, index) => (
                                     <div key={p.id} className="flex items-center bg-slate-800/50 p-2 rounded-lg">
                                         <div className="w-8 text-center font-bold">
-                                           <span className={`w-6 h-6 flex items-center justify-center rounded-full text-sm ${getRankBadge(index + 1)}`}>{index + 1}</span>
+                                           <span className={`w-6 h-6 flex items-center justify-center rounded-full text-sm bg-gradient-to-br ${getRankBadge(index + 1)} ${getRankText(index + 1)}`}>{index + 1}</span>
                                         </div>
                                         <div className="flex-grow flex items-center gap-3 ml-2">
                                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color }}></span>
@@ -172,18 +211,39 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                             </div>
                         </div>
                         <div>
-                            <h4 className="text-lg font-semibold mb-2">Punkteverlauf</h4>
+                             <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
+                                <h4 className="text-lg font-semibold">Punkteverlauf</h4>
+                                 <ChartModeToggle
+                                    currentMode={chartMode}
+                                    onChange={(mode) => setChartMode(mode)}
+                                    options={[
+                                        { value: 'perSession', label: 'Pro Spiel' },
+                                        { value: 'cumulative', label: 'Kumulativ' },
+                                    ]}
+                                />
+                            </div>
                             <div className="relative h-80">
                                  {categoryStats.timelineData.length > 1 ? (
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={categoryStats.timelineData}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.2)" />
-                                            <XAxis dataKey="name" stroke="#94a3b8" tick={{ fontSize: 10 }} />
-                                            <YAxis stroke="#94a3b8" />
-                                            <Tooltip contentStyle={{ backgroundColor: '#0F172A', border: '1px solid #334155' }} />
-                                            <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                                        <LineChart data={categoryStats.timelineData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                            <defs>
+                                                {players.map(p => (
+                                                    <linearGradient key={`colorCat-${p.id}`} id={`colorCat-${p.id.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
+                                                        <stop offset="95%" stopColor={p.color} stopOpacity={0}/>
+                                                    </linearGradient>
+                                                ))}
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.1)" />
+                                            <XAxis dataKey="name" stroke="#64748b" tick={{ fontSize: 10 }} angle={-15} textAnchor="end" height={50} />
+                                            <YAxis stroke="#64748b" />
+                                            <Tooltip content={<CustomChartTooltip />} />
+                                            <Legend wrapperStyle={{ color: '#cbd5e1', paddingTop: '20px' }} />
                                             {players.filter(p => categoryStats.leaderboard.some(lp => lp.id === p.id)).map(p => (
-                                                <Line key={p.id} type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={2} dot={{r: 2}} activeDot={{r: 5}} />
+                                                <React.Fragment key={`line-${p.id}`}>
+                                                    <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#colorCat-${p.id.replace(/[^a-zA-Z0-9]/g, '')})`} />
+                                                    <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 5, stroke: 'rgba(255,255,255,0.3)', strokeWidth: 4}} />
+                                                </React.Fragment>
                                             ))}
                                         </LineChart>
                                     </ResponsiveContainer>
