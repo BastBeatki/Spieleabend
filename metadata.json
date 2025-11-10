@@ -1,0 +1,5 @@
+{
+  "name": "Spieleabend Scoreboard",
+  "description": "A comprehensive scoreboard application to track scores for game nights, including session management, player statistics, and game history. Built with React, Tailwind CSS, and Firebase.",
+  "requestFramePermissions": []
+}
