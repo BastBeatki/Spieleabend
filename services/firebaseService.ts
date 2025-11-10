@@ -1,56 +1,26 @@
 
-import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import * as realService from './realFirebase';
 import * as mockService from './mockFirebase';
 
-declare global {
-    var __firebase_config: string | undefined;
-    var __app_id: string | undefined;
-}
+// The application now runs exclusively in a local-only (mock) mode
+// as per user request. The logic for connecting to a live Firebase backend
+// has been removed. All data is handled locally by the mock service.
+// The import/export feature should be used for data persistence.
 
-let isFirebaseAvailable = false;
-
-try {
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-    if (!firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith('YOUR_API_KEY')) {
-        throw new Error("Firebase configuration not provided or invalid.");
-    }
-    
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'scoreboard-dev';
-
-    realService.init(app, db, auth, appId);
-    isFirebaseAvailable = true;
-    console.log("Firebase initialized successfully. Running in online mode.");
-
-} catch (e: any) {
-    console.warn("Firebase initialization failed, falling back to mock mode.", e.message);
-    isFirebaseAvailable = false;
-}
-
-const service = isFirebaseAvailable ? realService : mockService;
-
-export const isMockMode = !isFirebaseAvailable;
-
-export const onAuth = service.onAuth;
-export const subscribeToCollection = service.subscribeToCollection;
-export const subscribeToSubCollection = service.subscribeToSubCollection;
-export const subscribeToDocument = service.subscribeToDocument;
-export const addDocument = service.addDocument;
-export const updateDocument = service.updateDocument;
-export const deleteDocument = service.deleteDocument;
-export const startSession = service.startSession;
-export const startGame = service.startGame;
-export const updateScoresTransaction = service.updateScoresTransaction;
-export const undoLastUpdateTransaction = service.undoLastUpdateTransaction;
-export const deleteGameTransaction = service.deleteGameTransaction;
-export const addPlayersToSessionTransaction = service.addPlayersToSessionTransaction;
-export const deleteSession = service.deleteSession;
-export const getAllGameNames = service.getAllGameNames;
-export const getAllGames = service.getAllGames;
-export const exportData = service.exportData;
-export const importData = service.importData;
+export const onAuth = mockService.onAuth;
+export const subscribeToCollection = mockService.subscribeToCollection;
+export const subscribeToSubCollection = mockService.subscribeToSubCollection;
+export const subscribeToDocument = mockService.subscribeToDocument;
+export const addDocument = mockService.addDocument;
+export const updateDocument = mockService.updateDocument;
+export const deleteDocument = mockService.deleteDocument;
+export const startSession = mockService.startSession;
+export const startGame = mockService.startGame;
+export const updateScoresTransaction = mockService.updateScoresTransaction;
+export const undoLastUpdateTransaction = mockService.undoLastUpdateTransaction;
+export const deleteGameTransaction = mockService.deleteGameTransaction;
+export const addPlayersToSessionTransaction = mockService.addPlayersToSessionTransaction;
+export const deleteSession = mockService.deleteSession;
+export const getAllGameNames = mockService.getAllGameNames;
+export const getAllGames = mockService.getAllGames;
+export const exportData = mockService.exportData;
+export const importData = mockService.importData;

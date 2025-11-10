@@ -9,7 +9,6 @@ import { GlobalStatsView } from './components/views/GlobalStatsView';
 import { ScoreboardView } from './components/views/ScoreboardView';
 import { LiveGameView } from './components/views/LiveGameView';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
-import { OfflineBanner } from './components/ui/OfflineBanner';
 
 const App: React.FC = () => {
     const [view, setView] = useState<View>('loading');
@@ -34,9 +33,7 @@ const App: React.FC = () => {
     useEffect(() => {
         const authUnsubscribe = fb.onAuth(async (user, error) => {
             if (error) {
-                // In mock mode, this error won't happen. In real mode, it would be caught,
-                // but we no longer show a specific error screen, as the app is always functional.
-                // The offline banner serves as the indicator of a connection issue.
+                // This error won't happen in the new local-only mode.
                 console.error("Authentication failed:", error);
             }
 
@@ -134,7 +131,6 @@ const App: React.FC = () => {
 
     return (
         <div className="w-full max-w-4xl mx-auto min-h-screen p-4 flex flex-col">
-            {fb.isMockMode && <OfflineBanner />}
             {renderView()}
         </div>
     );
