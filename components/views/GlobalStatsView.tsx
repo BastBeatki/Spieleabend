@@ -2,9 +2,10 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Player, Category, Session, View, Game } from '../../types';
 import * as fb from '../../services/firebaseService';
 import { Header } from '../ui/Header';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Area } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
-import { CustomChartTooltip } from '../ui/CustomChartTooltip';
+
+declare const Recharts: any;
 
 interface GlobalStatsViewProps {
   players: Player[];
@@ -15,9 +16,9 @@ interface GlobalStatsViewProps {
 
 const getRankBadge = (rank: number) => {
     switch(rank) {
-        case 1: return 'bg-gradient-to-br from-green-400 to-cyan-400 text-white font-bold';
-        case 2: return 'bg-gradient-to-br from-blue-400 to-purple-500 text-white';
-        case 3: return 'bg-gradient-to-br from-purple-400 to-pink-500 text-white';
+        case 1: return 'bg-green-500 text-slate-900 font-bold';
+        case 2: return 'bg-blue-500 text-white';
+        case 3: return 'bg-purple-500 text-white';
         default: return 'bg-slate-700 text-slate-300';
     }
 }
@@ -130,26 +131,14 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                     <div className="relative h-80 md:h-96 mb-8">
                         {timelineData.length > 1 && (
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={timelineData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                <defs>
-                                    {players.map(p => (
-                                        <linearGradient key={`grad-${p.id}`} id={`grad-${p.id}`} x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
-                                            <stop offset="95%" stopColor={p.color} stopOpacity={0}/>
-                                        </linearGradient>
-                                    ))}
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.1)" />
-                                <XAxis dataKey="name" stroke="#64748b" tick={{ fontSize: 12 }} dy={10} axisLine={false} tickLine={false} />
-                                <YAxis stroke="#64748b" tick={{ fontSize: 12 }} dx={-10} axisLine={false} tickLine={false} />
-                                <Tooltip content={<CustomChartTooltip />} cursor={{ stroke: 'rgba(100, 116, 139, 0.3)', strokeWidth: 1, strokeDasharray: '3 3' }} />
-                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                            <LineChart data={timelineData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.2)" />
+                                <XAxis dataKey="name" stroke="#94a3b8" tick={{ fontSize: 12 }} />
+                                <YAxis stroke="#94a3b8" />
+                                <Tooltip contentStyle={{ backgroundColor: '#0F172A', border: '1px solid #334155' }} />
+                                <Legend wrapperStyle={{ color: '#cbd5e1' }} />
                                 {players.map(p => (
-                                    <React.Fragment key={p.id}>
-                                        <Area type="monotone" dataKey={p.name} stroke={false} fill={`url(#grad-${p.id})`} isAnimationActive={false} />
-                                        <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={10} strokeOpacity={0.2} dot={false} activeDot={false} isAnimationActive={false} />
-                                        <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={false} activeDot={{ r: 6, fill: p.color, stroke: '#0D1117', strokeWidth: 2, style: { filter: `drop-shadow(0 0 5px ${p.color})` } }} />
-                                    </React.Fragment>
+                                    <Line key={p.id} type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={2} dot={{r: 3}} activeDot={{r: 6}} />
                                 ))}
                             </LineChart>
                         </ResponsiveContainer>
@@ -187,26 +176,14 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                             <div className="relative h-80">
                                  {categoryStats.timelineData.length > 1 ? (
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={categoryStats.timelineData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                             <defs>
-                                                {players.map(p => (
-                                                    <linearGradient key={`grad-cat-${p.id}`} id={`grad-cat-${p.id}`} x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
-                                                        <stop offset="95%" stopColor={p.color} stopOpacity={0}/>
-                                                    </linearGradient>
-                                                ))}
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.1)" />
-                                            <XAxis dataKey="name" stroke="#64748b" tick={{ fontSize: 10 }} dy={10} axisLine={false} tickLine={false} />
-                                            <YAxis stroke="#64748b" tick={{ fontSize: 12 }} dx={-10} axisLine={false} tickLine={false}/>
-                                            <Tooltip content={<CustomChartTooltip />} cursor={{ stroke: 'rgba(100, 116, 139, 0.3)', strokeWidth: 1, strokeDasharray: '3 3' }} />
-                                            <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                        <LineChart data={categoryStats.timelineData}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.2)" />
+                                            <XAxis dataKey="name" stroke="#94a3b8" tick={{ fontSize: 10 }} />
+                                            <YAxis stroke="#94a3b8" />
+                                            <Tooltip contentStyle={{ backgroundColor: '#0F172A', border: '1px solid #334155' }} />
+                                            <Legend wrapperStyle={{ color: '#cbd5e1' }} />
                                             {players.filter(p => categoryStats.leaderboard.some(lp => lp.id === p.id)).map(p => (
-                                                <React.Fragment key={p.id}>
-                                                    <Area type="monotone" dataKey={p.name} stroke={false} fill={`url(#grad-cat-${p.id})`} isAnimationActive={false} />
-                                                    <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={10} strokeOpacity={0.2} dot={false} activeDot={false} isAnimationActive={false} />
-                                                    <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={2} dot={false} activeDot={{ r: 5, fill: p.color, stroke: '#0D1117', strokeWidth: 2, style: { filter: `drop-shadow(0 0 4px ${p.color})` } }} />
-                                                </React.Fragment>
+                                                <Line key={p.id} type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={2} dot={{r: 2}} activeDot={{r: 5}} />
                                             ))}
                                         </LineChart>
                                     </ResponsiveContainer>

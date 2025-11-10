@@ -3,9 +3,10 @@ import { Session, Game, PointUpdate, View } from '../../types';
 import * as fb from '../../services/firebaseService';
 import { Header } from '../ui/Header';
 import { Modal } from '../ui/Modal';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Area } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { UndoIcon } from '../ui/Icons';
-import { CustomChartTooltip } from '../ui/CustomChartTooltip';
+
+declare const Recharts: any;
 
 interface LiveGameViewProps {
   session: Session;
@@ -114,27 +115,13 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                     <div className="relative h-96">
                         {chartData.length > 0 && (
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                 <defs>
-                                    {session.players.map(p => (
-                                        <linearGradient key={`grad-live-${p.id}`} id={`grad-live-${p.id}`} x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
-                                            <stop offset="95%" stopColor={p.color} stopOpacity={0}/>
-                                        </linearGradient>
-                                    ))}
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.1)" />
-                                <XAxis dataKey="name" stroke="#64748b" tick={{ fontSize: 12 }} dy={10} axisLine={false} tickLine={false} />
-                                <YAxis stroke="#64748b" tick={{ fontSize: 12 }} dx={-10} axisLine={false} tickLine={false} />
-                                <Tooltip content={<CustomChartTooltip />} cursor={{ stroke: 'rgba(100, 116, 139, 0.3)', strokeWidth: 1, strokeDasharray: '3 3' }} />
-                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                {session.players.map(p => 
-                                    <React.Fragment key={p.id}>
-                                        <Area type="monotone" dataKey={p.name} stroke={false} fill={`url(#grad-live-${p.id})`} isAnimationActive={false}/>
-                                        <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={10} strokeOpacity={0.2} dot={false} activeDot={false} isAnimationActive={false} />
-                                        <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={false} activeDot={{ r: 6, fill: p.color, stroke: '#0D1117', strokeWidth: 2, style: { filter: `drop-shadow(0 0 5px ${p.color})` } }} />
-                                    </React.Fragment>
-                                )}
+                            <LineChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.2)" />
+                                <XAxis dataKey="name" stroke="#94a3b8" />
+                                <YAxis stroke="#94a3b8" />
+                                <Tooltip contentStyle={{ backgroundColor: '#0F172A', border: '1px solid #334155' }} />
+                                <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                                {session.players.map(p => <Line key={p.id} type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={2} />)}
                             </LineChart>
                         </ResponsiveContainer>
                         )}
