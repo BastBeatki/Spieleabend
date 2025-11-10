@@ -62,7 +62,7 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
     return (
         <>
             <Header title="Neue Session konfigurieren" onBack={() => navigate('home')} backText="Zurück zur Übersicht" />
-            <div className="bg-slate-800 p-6 rounded-lg shadow-xl">
+            <div className="bg-slate-900/70 p-8 rounded-xl shadow-2xl border border-slate-800">
                 <div className="mb-6">
                     <label htmlFor="sessionNameInput" className="block text-lg font-medium mb-2">Name der Session</label>
                     <input
@@ -70,7 +70,7 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
                         id="sessionNameInput"
                         value={sessionName}
                         onChange={(e) => setSessionName(e.target.value)}
-                        className="w-full bg-slate-700 text-white border-2 border-slate-600 rounded-lg py-3 px-4 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                         placeholder="z.B. Quizabend Januar"
                     />
                 </div>
@@ -78,12 +78,12 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
                     <h3 className="text-lg font-medium mb-3">Spieler auswählen</h3>
                     <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                         {players.length > 0 ? players.map(p => (
-                            <label key={p.id} className="flex items-center bg-slate-700 p-3 rounded-lg cursor-pointer hover:bg-slate-600 transition">
+                            <label key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg cursor-pointer hover:bg-slate-700/80 transition">
                                 <input
                                     type="checkbox"
                                     checked={selectedPlayerIds.has(p.id)}
                                     onChange={() => handlePlayerSelection(p.id)}
-                                    className="h-6 w-6 rounded border-slate-500 bg-slate-800 text-blue-600 focus:ring-blue-500"
+                                    className="h-6 w-6 rounded border-slate-600 bg-slate-900 text-green-500 focus:ring-green-500 focus:ring-offset-slate-900"
                                 />
                                 <span className="ml-4 text-lg" style={{ color: p.color }}>{p.name}</span>
                             </label>
@@ -91,10 +91,10 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
                     </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4">
-                    <button onClick={() => setPlayerModalOpen(true)} className="w-full sm:w-auto bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 px-5 rounded-lg transition duration-300">
+                    <button onClick={() => setPlayerModalOpen(true)} className="w-full sm:w-auto bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-3 px-5 rounded-lg transition duration-300">
                         Neuen Spieler anlegen
                     </button>
-                    <button onClick={handleStartSession} disabled={isStartDisabled} className="flex-grow bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-5 rounded-lg text-lg transition duration-300 disabled:bg-slate-500 disabled:cursor-not-allowed">
+                    <button onClick={handleStartSession} disabled={isStartDisabled} className="flex-grow bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300 shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] disabled:bg-slate-700 disabled:shadow-none disabled:cursor-not-allowed">
                         Session starten
                     </button>
                 </div>
@@ -104,19 +104,19 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
                 title="Neuen Spieler anlegen"
                 onClose={() => setPlayerModalOpen(false)}
                 buttons={[
-                    { text: 'Abbrechen', onClick: () => setPlayerModalOpen(false), className: 'bg-slate-600 hover:bg-slate-700 text-white font-bold py-2 px-5 rounded-lg' },
-                    { text: 'Speichern', onClick: handleSavePlayer, className: 'bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg', autoFocus: true },
+                    { text: 'Abbrechen', onClick: () => setPlayerModalOpen(false), className: 'bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-2 px-5 rounded-lg' },
+                    { text: 'Speichern', onClick: handleSavePlayer, className: 'bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-5 rounded-lg transition-all shadow-md hover:shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40', autoFocus: true },
                 ]}
             >
                 <div className="space-y-4 text-left">
                      {error && <p className="text-red-400 text-center">{error}</p>}
                     <div>
                         <label htmlFor="playerNameInput" className="block text-lg font-medium mb-2">Name des Spielers</label>
-                        <input type="text" id="playerNameInput" value={newPlayerName} onChange={e => setNewPlayerName(e.target.value)} className="w-full bg-slate-700 text-white border-2 border-slate-600 rounded-lg py-3 px-4 focus:outline-none focus:border-blue-500" placeholder="Max Mustermann" />
+                        <input type="text" id="playerNameInput" value={newPlayerName} onChange={e => setNewPlayerName(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="Max Mustermann" />
                     </div>
                     <div>
                         <label htmlFor="playerColorInput" className="block text-lg font-medium mb-2">Farbe</label>
-                        <input type="color" id="playerColorInput" value={newPlayerColor} onChange={e => setNewPlayerColor(e.target.value)} className="w-full h-12 p-1 bg-slate-700 border-2 border-slate-600 rounded-lg cursor-pointer" />
+                        <input type="color" id="playerColorInput" value={newPlayerColor} onChange={e => setNewPlayerColor(e.target.value)} className="w-full h-12 p-1 bg-slate-800 border-2 border-slate-700 rounded-lg cursor-pointer" />
                     </div>
                 </div>
             </Modal>

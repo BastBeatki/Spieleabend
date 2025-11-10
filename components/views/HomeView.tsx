@@ -102,35 +102,35 @@ export const HomeView: React.FC<HomeViewProps> = ({ sessions, navigate, setView 
 
     return (
     <>
-      <header className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-white">Spieleabend Scoreboard</h1>
-        <p className="text-slate-400 mt-2">Willkommen zurück! Starte eine neue Session oder sieh dir alte an.</p>
+      <header className="text-center mb-10">
+        <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-300 via-blue-400 to-purple-500">Spieleabend Scoreboard</h1>
+        <p className="text-slate-400 mt-4">Willkommen zurück! Starte eine neue Session oder sieh dir alte an.</p>
       </header>
       <button
         onClick={() => navigate('sessionSetup')}
-        className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-lg text-xl transition duration-300 shadow-lg mb-4"
+        className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 px-6 rounded-lg text-xl transition-all duration-300 shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] mb-6"
       >
         Neue Session starten
       </button>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <button
           onClick={() => navigate('dataManagement')}
-          className="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-5 rounded-lg transition duration-300"
+          className="w-full bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold py-3 px-5 rounded-lg transition duration-300"
         >
           Stammdaten-Verwaltung
         </button>
         <button
           onClick={() => navigate('globalStats')}
-          className="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-5 rounded-lg transition duration-300"
+          className="w-full bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold py-3 px-5 rounded-lg transition duration-300"
         >
           Karriere-Statistiken
         </button>
       </div>
        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <button onClick={handleExport} className="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-3 px-5 rounded-lg transition duration-300 flex items-center justify-center gap-2">
+        <button onClick={handleExport} className="w-full bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-green-400 font-bold py-3 px-5 rounded-lg transition duration-300 flex items-center justify-center gap-2">
             <ExportIcon /> Daten exportieren (Backup)
         </button>
-        <button onClick={() => importFileInputRef.current?.click()} className="w-full bg-yellow-600 hover:bg-yellow-500 text-slate-900 font-bold py-3 px-5 rounded-lg transition duration-300 flex items-center justify-center gap-2">
+        <button onClick={() => importFileInputRef.current?.click()} className="w-full bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-blue-400 font-bold py-3 px-5 rounded-lg transition duration-300 flex items-center justify-center gap-2">
             <ImportIcon /> Daten importieren
         </button>
         <input type="file" ref={importFileInputRef} onChange={handleImportFileSelect} className="hidden" accept=".json"/>
@@ -139,7 +139,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ sessions, navigate, setView 
         <h2 className="text-2xl font-semibold border-b-2 border-slate-700 pb-2 mb-4">Vergangene Sessions</h2>
         <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
           {sessions.length > 0 ? sessions.map(s => (
-            <div key={s.id} className="item-container bg-slate-800 p-4 rounded-lg flex justify-between items-center group">
+            <div key={s.id} className="group bg-slate-900/70 p-4 rounded-xl flex justify-between items-center transition-all duration-300 border border-slate-800 hover:border-green-500/50 hover:bg-slate-800/50">
               <div className="cursor-pointer flex-grow" onClick={() => navigate('scoreboard', { sessionId: s.id })}>
                 <h3 className="font-bold text-lg">{s.name}</h3>
                 <p className="text-sm text-slate-400">{s.createdAt.toDate().toLocaleDateString('de-DE')}</p>
@@ -161,10 +161,10 @@ export const HomeView: React.FC<HomeViewProps> = ({ sessions, navigate, setView 
             buttons={
                 modal.onConfirm
                 ? [
-                    { text: 'Abbrechen', onClick: () => modal.onConfirm!(false), className: 'bg-slate-600 hover:bg-slate-700 text-white font-bold py-2 px-6 rounded-lg' },
-                    { text: 'Bestätigen', onClick: () => modal.onConfirm!(true), className: 'bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg', autoFocus: true },
+                    { text: 'Abbrechen', onClick: () => modal.onConfirm!(false), className: 'bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-2 px-6 rounded-lg' },
+                    { text: 'Bestätigen', onClick: () => modal.onConfirm!(true), className: 'bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-6 rounded-lg transition-all shadow-md hover:shadow-lg shadow-red-500/20 hover:shadow-red-500/40', autoFocus: true },
                 ]
-                : [{ text: 'OK', onClick: closeModal, className: 'bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg', autoFocus: true }]
+                : [{ text: 'OK', onClick: closeModal, className: 'bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-8 rounded-lg transition-all shadow-md hover:shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40', autoFocus: true }]
             }
         >
            <p>{modal.message}</p>

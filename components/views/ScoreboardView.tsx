@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Session, Game, Player, Category, View, SessionPlayer } from '../../types';
 import * as fb from '../../services/firebaseService';
@@ -20,10 +21,10 @@ interface ScoreboardViewProps {
 
 const getRankBadge = (rank: number) => {
     switch(rank) {
-        case 1: return 'bg-amber-400 text-slate-900';
-        case 2: return 'bg-slate-400 text-slate-900';
-        case 3: return 'bg-orange-400 text-slate-900';
-        default: return 'bg-slate-600 text-slate-200';
+        case 1: return 'bg-green-500 text-slate-900 font-bold';
+        case 2: return 'bg-blue-500 text-white';
+        case 3: return 'bg-purple-500 text-white';
+        default: return 'bg-slate-700 text-slate-300';
     }
 }
 
@@ -121,10 +122,10 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
         <>
             <Header title={session.name} onBack={() => navigate('home')} backText="Zurück zur Übersicht" />
 
-            <div className="bg-slate-800 p-6 rounded-lg shadow-xl mb-8">
+            <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
                 <h3 className="text-xl font-semibold mb-4">Session-Ranking</h3>
                 <div className="space-y-3">{sortedPlayers.map((p, i) => (
-                     <div key={p.id} className="flex items-center bg-slate-700 p-3 rounded-lg shadow-md">
+                     <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg shadow-md">
                         <div className="w-10 text-center font-bold"><span className={`w-8 h-8 flex items-center justify-center rounded-full ${getRankBadge(i+1)}`}>{i+1}</span></div>
                         <div className="flex-grow flex items-center gap-3 ml-3">
                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color }}></span>
@@ -133,39 +134,39 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                         <div className="text-2xl font-black text-white">{session.totalScores[p.id] || 0} <span className="text-sm font-normal text-slate-400">Punkte</span></div>
                     </div>
                 ))}</div>
-                <button onClick={() => setPlayerModalOpen(true)} className="mt-4 w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                <button onClick={() => setPlayerModalOpen(true)} className="mt-4 w-full bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-2 px-4 rounded-lg transition duration-300">
                     Spieler zu dieser Session hinzufügen
                 </button>
             </div>
 
-            <div className="bg-slate-800 p-6 rounded-lg shadow-xl mb-8">
+            <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
                  <h3 className="text-xl font-semibold mb-4">Neues Spiel starten</h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <input type="text" list="gameNameList" value={gameName} onChange={e => setGameName(e.target.value)} className="w-full bg-slate-700 text-white border-2 border-slate-600 rounded-lg py-3 px-4" placeholder="Name des Spiels" />
+                    <input type="text" list="gameNameList" value={gameName} onChange={e => setGameName(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="Name des Spiels" />
                     <datalist id="gameNameList">{allGameNames.map(name => <option key={name} value={name} />)}</datalist>
                     <div>
-                         <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="w-full bg-slate-700 text-white border-2 border-slate-600 rounded-lg py-3 px-4">
+                         <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20">
                             <option value="">Kategorie auswählen</option>
                             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             <option value="__new__">Neue Kategorie anlegen...</option>
                          </select>
-                         {categoryId === '__new__' && <input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="w-full bg-slate-700 text-white border-2 border-slate-600 rounded-lg py-3 px-4 mt-2" placeholder="Neue Kategorie..."/>}
+                         {categoryId === '__new__' && <input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 mt-2 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="Neue Kategorie..."/>}
                     </div>
                  </div>
-                 <button onClick={handleStartGame} className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-5 rounded-lg text-lg transition duration-300">Spiel starten</button>
+                 <button onClick={handleStartGame} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300 shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)]">Spiel starten</button>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                <div className="bg-slate-800 p-6 rounded-lg shadow-xl">
+                <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
                     <h3 className="text-xl font-semibold mb-4">Punkteverlauf (Session)</h3>
                     <div className="relative h-80">
                         {chartData.length > 1 && (
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={chartData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.2)" />
                                 <XAxis dataKey="name" stroke="#94a3b8" />
                                 <YAxis stroke="#94a3b8" />
-                                <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155' }} />
+                                <Tooltip contentStyle={{ backgroundColor: '#0F172A', border: '1px solid #334155' }} />
                                 <Legend wrapperStyle={{ color: '#cbd5e1' }} />
                                 {session.players.map(p => <Line key={p.id} type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={2} />)}
                             </LineChart>
@@ -173,10 +174,10 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                         )}
                     </div>
                 </div>
-                <div className="bg-slate-800 p-6 rounded-lg shadow-xl">
+                <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
                     <h3 className="text-xl font-semibold mb-4">Statistik nach Kategorie (Session)</h3>
                     <div className="space-y-4 max-h-80 overflow-y-auto pr-2">{categoryStats.map(cat => (
-                        <div key={cat.name} className="bg-slate-700 p-3 rounded-lg">
+                        <div key={cat.name} className="bg-slate-800/80 p-3 rounded-lg">
                             <h4 className="font-semibold mb-2">{cat.name}</h4>
                             {/* FIX: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type. */}
                             <div className="space-y-1">{Object.entries(cat.scores).sort(([,a],[,b]) => (b as number) - (a as number)).map(([pId, score]) => {
@@ -187,17 +188,17 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                     ))}</div>
                 </div>
             </div>
-             <div className="bg-slate-800 p-6 rounded-lg shadow-xl">
+             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
                 <h3 className="text-xl font-semibold mb-4">Gespielte Spiele</h3>
                 <div className="space-y-4 max-h-96 overflow-y-auto pr-2">{games.map(g => (
-                    <div key={g.id} className="item-container bg-slate-700 p-4 rounded-lg group">
+                    <div key={g.id} className="group bg-slate-800/80 p-4 rounded-lg transition-all duration-300 border border-transparent hover:border-green-500/30">
                          <div className="flex justify-between items-center cursor-pointer" onClick={() => navigate('liveGame', { sessionId: session.id, gameId: g.id })}>
                             <h4 className="font-semibold text-lg">{g.gameNumber}. {g.name} <span className="text-xs text-slate-400 font-normal ml-2">{g.categoryName}</span></h4>
                             {/* FIX: Operator '+' cannot be applied to types 'unknown' and 'unknown'. */}
                             <span className="text-lg font-bold">{(Object.values(g.gameScores) as number[]).reduce((a, b) => a + b, 0)} Pkt</span>
                         </div>
                         <div className="flex justify-between items-center mt-2">
-                            <div className="text-sm text-yellow-400">🏆 {
+                            <div className="text-sm text-green-400">🏆 {
                                 Object.entries(g.gameScores)
                                 // FIX: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
                                 .sort(([,a],[,b])=>(b as number)-(a as number))
@@ -223,9 +224,9 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                 onClose={() => setModal({isOpen: false, title: '', message: ''})}
                 buttons={
                     modal.onConfirm ? [
-                        { text: 'Abbrechen', onClick: () => modal.onConfirm!(false), className: 'bg-slate-600 hover:bg-slate-700 text-white font-bold py-2 px-6 rounded-lg' },
-                        { text: 'Bestätigen', onClick: () => modal.onConfirm!(true), className: 'bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg', autoFocus: true },
-                    ] : [{ text: 'OK', onClick: () => setModal({isOpen: false, title: '', message: ''}), className: 'bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg', autoFocus: true }]
+                        { text: 'Abbrechen', onClick: () => modal.onConfirm!(false), className: 'bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-2 px-6 rounded-lg' },
+                        { text: 'Bestätigen', onClick: () => modal.onConfirm!(true), className: 'bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-6 rounded-lg transition-all shadow-md hover:shadow-lg shadow-red-500/20 hover:shadow-red-500/40', autoFocus: true },
+                    ] : [{ text: 'OK', onClick: () => setModal({isOpen: false, title: '', message: ''}), className: 'bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-8 rounded-lg transition-all shadow-md hover:shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40', autoFocus: true }]
                 }
             >
                 <p>{modal.message}</p>
@@ -243,13 +244,13 @@ const ManageSessionPlayersModal: React.FC<{isOpen: boolean, onClose: () => void,
     };
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Spieler hinzufügen" buttons={[
-            {text: 'Abbrechen', onClick: onClose, className: 'bg-slate-600 hover:bg-slate-700 text-white font-bold py-2 px-5 rounded-lg'},
-            {text: 'Speichern', onClick: () => onSave(Array.from(selectedIds)), className: 'bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg'}
+            {text: 'Abbrechen', onClick: onClose, className: 'bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-2 px-5 rounded-lg'},
+            {text: 'Speichern', onClick: () => onSave(Array.from(selectedIds)), className: 'bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-5 rounded-lg transition-all shadow-md hover:shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40'}
         ]}>
              <div className="space-y-2 max-h-60 overflow-y-auto pr-2 mb-6 text-left">
                 {availablePlayers.length > 0 ? availablePlayers.map(p => (
-                     <label key={p.id} className="flex items-center bg-slate-700 p-3 rounded-lg cursor-pointer hover:bg-slate-600 transition">
-                        <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => togglePlayer(p.id)} className="h-6 w-6 rounded border-slate-500 bg-slate-800 text-blue-600 focus:ring-blue-500" />
+                     <label key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg cursor-pointer hover:bg-slate-700/80 transition">
+                        <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => togglePlayer(p.id)} className="h-6 w-6 rounded border-slate-600 bg-slate-900 text-green-500 focus:ring-green-500 focus:ring-offset-slate-900" />
                         <span className="ml-4 text-lg" style={{ color: p.color }}>{p.name}</span>
                     </label>
                 )) : <p className="text-slate-400 text-center">Keine weiteren Spieler zum Hinzufügen verfügbar.</p>}

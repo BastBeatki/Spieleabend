@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { Player, Category, Session, View, Game } from '../../types';
 import * as fb from '../../services/firebaseService';
@@ -16,10 +17,10 @@ interface GlobalStatsViewProps {
 
 const getRankBadge = (rank: number) => {
     switch(rank) {
-        case 1: return 'bg-amber-400 text-slate-900';
-        case 2: return 'bg-slate-400 text-slate-900';
-        case 3: return 'bg-orange-400 text-slate-900';
-        default: return 'bg-slate-600 text-slate-200';
+        case 1: return 'bg-green-500 text-slate-900 font-bold';
+        case 2: return 'bg-blue-500 text-white';
+        case 3: return 'bg-purple-500 text-white';
+        default: return 'bg-slate-700 text-slate-300';
     }
 }
 
@@ -109,11 +110,11 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
         <>
             <Header title="Karriere-Statistiken" onBack={() => navigate('home')} backText="Zurück zur Übersicht" />
             <div className="space-y-8">
-                 <div className="bg-slate-800 p-6 rounded-lg shadow-xl">
+                 <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
                     <h3 className="text-xl font-semibold mb-4">Ewige Bestenliste</h3>
                     <div className="space-y-3">
                         {globalLeaderboard.map((p, index) => (
-                             <div key={p.id} className="flex items-center bg-slate-700 p-3 rounded-lg shadow-md">
+                             <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg shadow-md">
                                 <div className="w-10 text-center font-bold">
                                    <span className={`w-8 h-8 flex items-center justify-center rounded-full ${getRankBadge(index + 1)}`}>{index + 1}</span>
                                 </div>
@@ -126,16 +127,16 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                         ))}
                     </div>
                 </div>
-                <div className="bg-slate-800 p-6 rounded-lg shadow-xl">
+                <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
                     <h3 className="text-xl font-semibold mb-4">Punkteverlauf über alle Sessions</h3>
                     <div className="relative h-80 md:h-96 mb-8">
                         {timelineData.length > 1 && (
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={timelineData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.2)" />
                                 <XAxis dataKey="name" stroke="#94a3b8" tick={{ fontSize: 12 }} />
                                 <YAxis stroke="#94a3b8" />
-                                <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155' }} />
+                                <Tooltip contentStyle={{ backgroundColor: '#0F172A', border: '1px solid #334155' }} />
                                 <Legend wrapperStyle={{ color: '#cbd5e1' }} />
                                 {players.map(p => (
                                     <Line key={p.id} type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={2} dot={{r: 3}} activeDot={{r: 6}} />
@@ -147,7 +148,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
 
                     <h3 className="text-xl font-semibold mb-2 border-t border-slate-700 pt-6">Statistiken nach Kategorie</h3>
                     <p className="text-slate-400 mb-4">Wähle eine Kategorie, um die Bestenliste und den Punkteverlauf nur für diese Spiele anzuzeigen.</p>
-                    <select value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className="w-full bg-slate-700 text-white border-2 border-slate-600 rounded-lg py-3 px-4 mb-4">
+                    <select value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 mb-4 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20">
                         <option value="">Kategorie auswählen</option>
                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
@@ -158,7 +159,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                             <h4 className="text-lg font-semibold mb-2">Bestenliste</h4>
                             <div className="space-y-2">
                                 {categoryStats.leaderboard.length > 0 ? categoryStats.leaderboard.map((p, index) => (
-                                    <div key={p.id} className="flex items-center bg-slate-700/50 p-2 rounded-lg">
+                                    <div key={p.id} className="flex items-center bg-slate-800/50 p-2 rounded-lg">
                                         <div className="w-8 text-center font-bold">
                                            <span className={`w-6 h-6 flex items-center justify-center rounded-full text-sm ${getRankBadge(index + 1)}`}>{index + 1}</span>
                                         </div>
@@ -177,10 +178,10 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                                  {categoryStats.timelineData.length > 1 ? (
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={categoryStats.timelineData}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.2)" />
                                             <XAxis dataKey="name" stroke="#94a3b8" tick={{ fontSize: 10 }} />
                                             <YAxis stroke="#94a3b8" />
-                                            <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155' }} />
+                                            <Tooltip contentStyle={{ backgroundColor: '#0F172A', border: '1px solid #334155' }} />
                                             <Legend wrapperStyle={{ color: '#cbd5e1' }} />
                                             {players.filter(p => categoryStats.leaderboard.some(lp => lp.id === p.id)).map(p => (
                                                 <Line key={p.id} type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={2} dot={{r: 2}} activeDot={{r: 5}} />

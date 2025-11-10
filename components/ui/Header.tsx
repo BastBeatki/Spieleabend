@@ -9,8 +9,8 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ title, onBack, backText }) => (
-    <header className="mb-6 flex justify-between items-center">
-        <h2 className="text-3xl font-bold text-white truncate pr-4">{title}</h2>
+    <header className="mb-8 flex justify-between items-center">
+        <h2 className="text-4xl font-extrabold text-slate-100 truncate pr-4">{title}</h2>
         <BackButton onClick={onBack}>{backText}</BackButton>
     </header>
 );

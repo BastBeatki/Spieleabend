@@ -46,9 +46,9 @@ export const Modal: React.FC<ModalProps> = ({ title, onClose, children, buttons,
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-      <div ref={modalRef} className="bg-slate-800 rounded-lg shadow-xl p-8 w-full max-w-md text-center" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <h3 id="modal-title" className="text-2xl font-bold mb-4 text-white">{title}</h3>
+    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+      <div ref={modalRef} className="bg-slate-900/95 border border-slate-700/80 rounded-xl shadow-2xl p-8 w-full max-w-md text-center" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <h3 id="modal-title" className="text-2xl font-bold mb-4 text-slate-100">{title}</h3>
         <div className="text-slate-300 mb-6">{children}</div>
         <div className="flex justify-center gap-4">
           {buttons.map((btn) => (
