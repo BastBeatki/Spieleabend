@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Session, Game, PointUpdate, View } from '../../types';
 import * as fb from '../../services/firebaseService';
@@ -105,7 +104,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                             <button onClick={handleUndo} className="w-1/3 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-3 px-5 rounded-lg text-lg transition duration-300" title="Letzte Eingabe rückgängig machen">
                                 <UndoIcon />
                             </button>
-                            <button onClick={handleUpdateScores} className="w-2/3 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300 shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)]">
+                            <button onClick={handleUpdateScores} className="w-2/3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300 shadow-[0_0_15px_rgba(99,102,241,0.4)] hover:shadow-[0_0_25px_rgba(124,58,237,0.6)]">
                                 Punkte aktualisieren
                             </button>
                         </div>

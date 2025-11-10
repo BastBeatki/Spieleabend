@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Player, Category, View } from '../../types';
 import * as fb from '../../services/firebaseService';
@@ -83,7 +82,7 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ players,
             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-6">
                  <h3 className="text-xl font-semibold mb-4">Kategorien</h3>
                  <div className="flex gap-4 mb-4">
-                    <input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="flex-grow bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="Neue Kategorie hinzufügen"/>
+                    <input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="flex-grow bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" placeholder="Neue Kategorie hinzufügen"/>
                     <button onClick={handleSaveCategory} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-5 rounded-lg">Speichern</button>
                  </div>
                  <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
@@ -97,7 +96,7 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ players,
                             <div className="flex gap-2 ml-4">
                                 {editingCategoryId === c.id ? (
                                     <>
-                                        <button onClick={handleUpdateCategory} className="text-green-400 hover:text-green-300 p-1"><SaveIcon /></button>
+                                        <button onClick={handleUpdateCategory} className="text-blue-400 hover:text-blue-300 p-1"><SaveIcon /></button>
                                         <button onClick={() => setEditingCategoryId(null)} className="text-red-400 hover:text-red-300 p-1"><CancelIcon /></button>
                                     </>
                                 ) : (
@@ -131,7 +130,7 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ players,
                             <div className="flex gap-2 ml-4">
                                 {editingPlayerId === p.id ? (
                                      <>
-                                        <button onClick={handleUpdatePlayer} className="text-green-400 hover:text-green-300 p-1"><SaveIcon /></button>
+                                        <button onClick={handleUpdatePlayer} className="text-blue-400 hover:text-blue-300 p-1"><SaveIcon /></button>
                                         <button onClick={() => setEditingPlayerId(null)} className="text-red-400 hover:text-red-300 p-1"><CancelIcon /></button>
                                     </>
                                 ) : (

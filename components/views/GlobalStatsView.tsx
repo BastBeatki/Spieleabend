@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { Player, Category, Session, View, Game } from '../../types';
 import * as fb from '../../services/firebaseService';
@@ -148,7 +147,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
 
                     <h3 className="text-xl font-semibold mb-2 border-t border-slate-700 pt-6">Statistiken nach Kategorie</h3>
                     <p className="text-slate-400 mb-4">Wähle eine Kategorie, um die Bestenliste und den Punkteverlauf nur für diese Spiele anzuzeigen.</p>
-                    <select value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 mb-4 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20">
+                    <select value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 mb-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
                         <option value="">Kategorie auswählen</option>
                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>

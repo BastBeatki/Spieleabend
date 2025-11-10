@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Session, Game, Player, Category, View, SessionPlayer } from '../../types';
 import * as fb from '../../services/firebaseService';
@@ -142,18 +141,18 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
                  <h3 className="text-xl font-semibold mb-4">Neues Spiel starten</h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <input type="text" list="gameNameList" value={gameName} onChange={e => setGameName(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="Name des Spiels" />
+                    <input type="text" list="gameNameList" value={gameName} onChange={e => setGameName(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" placeholder="Name des Spiels" />
                     <datalist id="gameNameList">{allGameNames.map(name => <option key={name} value={name} />)}</datalist>
                     <div>
-                         <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20">
+                         <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
                             <option value="">Kategorie auswählen</option>
                             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             <option value="__new__">Neue Kategorie anlegen...</option>
                          </select>
-                         {categoryId === '__new__' && <input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 mt-2 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="Neue Kategorie..."/>}
+                         {categoryId === '__new__' && <input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 mt-2 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" placeholder="Neue Kategorie..."/>}
                     </div>
                  </div>
-                 <button onClick={handleStartGame} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300 shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)]">Spiel starten</button>
+                 <button onClick={handleStartGame} className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300 shadow-[0_0_15px_rgba(99,102,241,0.4)] hover:shadow-[0_0_25px_rgba(124,58,237,0.6)]">Spiel starten</button>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
@@ -191,14 +190,14 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
              <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
                 <h3 className="text-xl font-semibold mb-4">Gespielte Spiele</h3>
                 <div className="space-y-4 max-h-96 overflow-y-auto pr-2">{games.map(g => (
-                    <div key={g.id} className="group bg-slate-800/80 p-4 rounded-lg transition-all duration-300 border border-transparent hover:border-green-500/30">
+                    <div key={g.id} className="group bg-slate-800/80 p-4 rounded-lg transition-all duration-300 border border-transparent hover:border-blue-500/30">
                          <div className="flex justify-between items-center cursor-pointer" onClick={() => navigate('liveGame', { sessionId: session.id, gameId: g.id })}>
                             <h4 className="font-semibold text-lg">{g.gameNumber}. {g.name} <span className="text-xs text-slate-400 font-normal ml-2">{g.categoryName}</span></h4>
                             {/* FIX: Operator '+' cannot be applied to types 'unknown' and 'unknown'. */}
                             <span className="text-lg font-bold">{(Object.values(g.gameScores) as number[]).reduce((a, b) => a + b, 0)} Pkt</span>
                         </div>
                         <div className="flex justify-between items-center mt-2">
-                            <div className="text-sm text-green-400">🏆 {
+                            <div className="text-sm text-blue-400">🏆 {
                                 Object.entries(g.gameScores)
                                 // FIX: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
                                 .sort(([,a],[,b])=>(b as number)-(a as number))
@@ -250,7 +249,7 @@ const ManageSessionPlayersModal: React.FC<{isOpen: boolean, onClose: () => void,
              <div className="space-y-2 max-h-60 overflow-y-auto pr-2 mb-6 text-left">
                 {availablePlayers.length > 0 ? availablePlayers.map(p => (
                      <label key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg cursor-pointer hover:bg-slate-700/80 transition">
-                        <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => togglePlayer(p.id)} className="h-6 w-6 rounded border-slate-600 bg-slate-900 text-green-500 focus:ring-green-500 focus:ring-offset-slate-900" />
+                        <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => togglePlayer(p.id)} className="h-6 w-6 rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900" />
                         <span className="ml-4 text-lg" style={{ color: p.color }}>{p.name}</span>
                     </label>
                 )) : <p className="text-slate-400 text-center">Keine weiteren Spieler zum Hinzufügen verfügbar.</p>}

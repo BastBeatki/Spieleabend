@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Player, View } from '../../types';
 import * as fb from '../../services/firebaseService';
@@ -70,7 +69,7 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
                         id="sessionNameInput"
                         value={sessionName}
                         onChange={(e) => setSessionName(e.target.value)}
-                        className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                        className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                         placeholder="z.B. Quizabend Januar"
                     />
                 </div>
@@ -83,7 +82,7 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
                                     type="checkbox"
                                     checked={selectedPlayerIds.has(p.id)}
                                     onChange={() => handlePlayerSelection(p.id)}
-                                    className="h-6 w-6 rounded border-slate-600 bg-slate-900 text-green-500 focus:ring-green-500 focus:ring-offset-slate-900"
+                                    className="h-6 w-6 rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900"
                                 />
                                 <span className="ml-4 text-lg" style={{ color: p.color }}>{p.name}</span>
                             </label>
@@ -94,7 +93,7 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
                     <button onClick={() => setPlayerModalOpen(true)} className="w-full sm:w-auto bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-3 px-5 rounded-lg transition duration-300">
                         Neuen Spieler anlegen
                     </button>
-                    <button onClick={handleStartSession} disabled={isStartDisabled} className="flex-grow bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300 shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] disabled:bg-slate-700 disabled:shadow-none disabled:cursor-not-allowed">
+                    <button onClick={handleStartSession} disabled={isStartDisabled} className="flex-grow bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300 shadow-[0_0_15px_rgba(99,102,241,0.4)] hover:shadow-[0_0_25px_rgba(124,58,237,0.6)] disabled:from-slate-600 disabled:to-slate-700 disabled:shadow-none disabled:cursor-not-allowed">
                         Session starten
                     </button>
                 </div>
@@ -112,7 +111,7 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
                      {error && <p className="text-red-400 text-center">{error}</p>}
                     <div>
                         <label htmlFor="playerNameInput" className="block text-lg font-medium mb-2">Name des Spielers</label>
-                        <input type="text" id="playerNameInput" value={newPlayerName} onChange={e => setNewPlayerName(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="Max Mustermann" />
+                        <input type="text" id="playerNameInput" value={newPlayerName} onChange={e => setNewPlayerName(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" placeholder="Max Mustermann" />
                     </div>
                     <div>
                         <label htmlFor="playerColorInput" className="block text-lg font-medium mb-2">Farbe</label>
