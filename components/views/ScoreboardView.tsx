@@ -239,7 +239,6 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                 </button>
             </div>
 
-
             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
                 <h3 className="text-xl font-semibold mb-4">Session-Ranking</h3>
                 <div className="space-y-3">{sortedPlayers.map((p, i) => (
@@ -262,6 +261,47 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                 )}
             </div>
 
+             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
+                    <h3 className="text-xl font-semibold">Punkteverlauf (Session)</h3>
+                        <ChartModeToggle
+                        currentMode={chartMode}
+                        onChange={(mode) => setChartMode(mode as 'cumulative' | 'perGame')}
+                        options={[
+                            { value: 'perGame', label: 'Pro Spiel' },
+                            { value: 'cumulative', label: 'Kumulativ' },
+                        ]}
+                    />
+                </div>
+                <div className="relative h-80">
+                    {chartData.length > 1 && (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                <defs>
+                                {enrichedSessionPlayers.map(p => (
+                                    <linearGradient key={`color-${p.id}`} id={`color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
+                                        <stop offset="95%" stopColor={p.color} stopOpacity={0}/>
+                                    </linearGradient>
+                                ))}
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.1)" />
+                            <XAxis dataKey="name" stroke="#64748b" tick={{ fontSize: 12 }} />
+                            <YAxis stroke="#64748b" />
+                            <Tooltip content={<CustomChartTooltip />} />
+                            <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                            {enrichedSessionPlayers.map(p => (
+                                <React.Fragment key={p.id}>
+                                    <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')})`} />
+                                    <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 6, stroke: 'rgba(255,255,255,0.3)', strokeWidth: 4}} />
+                                </React.Fragment>
+                            ))}
+                        </LineChart>
+                    </ResponsiveContainer>
+                    )}
+                </div>
+            </div>
+
             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
                  <h3 className="text-xl font-semibold mb-4">Neues Spiel starten</h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -279,61 +319,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                  <button onClick={handleStartGame} className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300 shadow-[0_0_15px_rgba(99,102,241,0.4)] hover:shadow-[0_0_25px_rgba(124,58,237,0.6)]">Spiel starten</button>
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
-                    <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
-                        <h3 className="text-xl font-semibold">Punkteverlauf (Session)</h3>
-                         <ChartModeToggle
-                            currentMode={chartMode}
-                            onChange={(mode) => setChartMode(mode as 'cumulative' | 'perGame')}
-                            options={[
-                                { value: 'perGame', label: 'Pro Spiel' },
-                                { value: 'cumulative', label: 'Kumulativ' },
-                            ]}
-                        />
-                    </div>
-                    <div className="relative h-80">
-                        {chartData.length > 1 && (
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                 <defs>
-                                    {enrichedSessionPlayers.map(p => (
-                                        <linearGradient key={`color-${p.id}`} id={`color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
-                                            <stop offset="95%" stopColor={p.color} stopOpacity={0}/>
-                                        </linearGradient>
-                                    ))}
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.1)" />
-                                <XAxis dataKey="name" stroke="#64748b" tick={{ fontSize: 12 }} />
-                                <YAxis stroke="#64748b" />
-                                <Tooltip content={<CustomChartTooltip />} />
-                                <Legend wrapperStyle={{ color: '#cbd5e1' }} />
-                                {enrichedSessionPlayers.map(p => (
-                                    <React.Fragment key={p.id}>
-                                        <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')})`} />
-                                        <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 6, stroke: 'rgba(255,255,255,0.3)', strokeWidth: 4}} />
-                                    </React.Fragment>
-                                ))}
-                            </LineChart>
-                        </ResponsiveContainer>
-                        )}
-                    </div>
-                </div>
-                <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
-                    <h3 className="text-xl font-semibold mb-4">Statistik nach Kategorie (Session)</h3>
-                    <div className="space-y-4 max-h-80 overflow-y-auto pr-2">{categoryStats.map(cat => (
-                        <div key={cat.name} className="bg-slate-800/80 p-3 rounded-lg">
-                            <h4 className="font-semibold mb-2">{cat.name}</h4>
-                            <div className="space-y-1">{Object.entries(cat.scores).sort(([,a],[,b]) => Number(b) - Number(a)).map(([pId, score]) => {
-                                const player = enrichedSessionPlayers.find(p => p.id === pId);
-                                return player ? <div key={pId} className="flex justify-between text-sm"><span style={{color: player.color}}>{player.name}</span><span className="font-bold">{score} Pkt</span></div> : null;
-                            })}</div>
-                        </div>
-                    ))}</div>
-                </div>
-            </div>
-             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
+             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
                 <h3 className="text-xl font-semibold mb-4">Gespielte Spiele</h3>
                 <div className="space-y-4 max-h-96 overflow-y-auto pr-2">{games.map(g => (
                     <div key={g.id} className="group bg-slate-800/80 p-4 rounded-lg transition-all duration-300 border border-transparent hover:border-blue-500/30">
@@ -352,6 +338,19 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                             }</div>
                              <button onClick={() => handleDeleteGame(g.id, g.name)} className="delete-btn opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 p-1"><TrashIcon size={20} /></button>
                         </div>
+                    </div>
+                ))}</div>
+            </div>
+
+            <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
+                <h3 className="text-xl font-semibold mb-4">Statistik nach Kategorie (Session)</h3>
+                <div className="space-y-4 max-h-80 overflow-y-auto pr-2">{categoryStats.map(cat => (
+                    <div key={cat.name} className="bg-slate-800/80 p-3 rounded-lg">
+                        <h4 className="font-semibold mb-2">{cat.name}</h4>
+                        <div className="space-y-1">{Object.entries(cat.scores).sort(([,a],[,b]) => Number(b) - Number(a)).map(([pId, score]) => {
+                            const player = enrichedSessionPlayers.find(p => p.id === pId);
+                            return player ? <div key={pId} className="flex justify-between text-sm"><span style={{color: player.color}}>{player.name}</span><span className="font-bold">{score} Pkt</span></div> : null;
+                        })}</div>
                     </div>
                 ))}</div>
             </div>

@@ -140,39 +140,7 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ players,
         <>
             <Header title="Stammdaten-Verwaltung" onBack={() => navigate('home')} backText="Zurück zur Übersicht" />
             
-            <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-6">
-                 <h3 className="text-xl font-semibold mb-4">Kategorien</h3>
-                 <div className="flex gap-4 mb-4">
-                    <input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="flex-grow bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" placeholder="Neue Kategorie hinzufügen"/>
-                    <button onClick={handleSaveCategory} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-5 rounded-lg">Speichern</button>
-                 </div>
-                 <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                    {categories.map(c => (
-                        <div key={c.id} className="bg-slate-800/80 p-3 rounded-lg flex justify-between items-center group">
-                            {editingCategoryId === c.id ? (
-                                <input type="text" value={editingCategoryName} onChange={e => setEditingCategoryName(e.target.value)} className="flex-grow bg-slate-700 text-white border-2 border-slate-600 rounded-lg py-1 px-2"/>
-                            ) : (
-                                <span>{c.name}</span>
-                            )}
-                            <div className="flex gap-2 ml-4">
-                                {editingCategoryId === c.id ? (
-                                    <>
-                                        <button onClick={handleUpdateCategory} className="text-blue-400 hover:text-blue-300 p-1"><SaveIcon /></button>
-                                        <button onClick={() => setEditingCategoryId(null)} className="text-red-400 hover:text-red-300 p-1"><CancelIcon /></button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <button onClick={() => { setEditingCategoryId(c.id); setEditingCategoryName(c.name); }} className="opacity-0 group-hover:opacity-100 text-blue-400 hover:text-blue-300 p-1"><EditIcon /></button>
-                                        <button onClick={() => handleDeleteCategory(c.id, c.name)} className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 p-1"><TrashIcon /></button>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                 </div>
-             </div>
-
-             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
+             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-6">
                 <h3 className="text-xl font-semibold mb-4">Spieler</h3>
                 <div className="space-y-2 max-h-72 overflow-y-auto pr-2">
                    {players.map(p => (
@@ -215,6 +183,39 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ players,
                    ))}
                 </div>
              </div>
+
+            <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
+                 <h3 className="text-xl font-semibold mb-4">Kategorien</h3>
+                 <div className="flex gap-4 mb-4">
+                    <input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="flex-grow bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" placeholder="Neue Kategorie hinzufügen"/>
+                    <button onClick={handleSaveCategory} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-5 rounded-lg">Speichern</button>
+                 </div>
+                 <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                    {categories.map(c => (
+                        <div key={c.id} className="bg-slate-800/80 p-3 rounded-lg flex justify-between items-center group">
+                            {editingCategoryId === c.id ? (
+                                <input type="text" value={editingCategoryName} onChange={e => setEditingCategoryName(e.target.value)} className="flex-grow bg-slate-700 text-white border-2 border-slate-600 rounded-lg py-1 px-2"/>
+                            ) : (
+                                <span>{c.name}</span>
+                            )}
+                            <div className="flex gap-2 ml-4">
+                                {editingCategoryId === c.id ? (
+                                    <>
+                                        <button onClick={handleUpdateCategory} className="text-blue-400 hover:text-blue-300 p-1"><SaveIcon /></button>
+                                        <button onClick={() => setEditingCategoryId(null)} className="text-red-400 hover:text-red-300 p-1"><CancelIcon /></button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button onClick={() => { setEditingCategoryId(c.id); setEditingCategoryName(c.name); }} className="opacity-0 group-hover:opacity-100 text-blue-400 hover:text-blue-300 p-1"><EditIcon /></button>
+                                        <button onClick={() => handleDeleteCategory(c.id, c.name)} className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 p-1"><TrashIcon /></button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                 </div>
+             </div>
+
              <Modal
                 isOpen={modal.isOpen}
                 title={modal.title}

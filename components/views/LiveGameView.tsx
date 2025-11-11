@@ -26,14 +26,14 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
     
     const enrichedSessionPlayers: SessionPlayer[] = useMemo(() => {
         const globalPlayerMap = new Map(players.map(p => [p.id, p]));
-        // FIX: The method for enriching session players was causing a type error.
-        // When a `sessionPlayer`'s type was not strictly enforced, it could be inferred as `{}`,
-        // causing issues when accessing its properties. This has been fixed by explicitly 
-        // constructing the player object in all branches to ensure all required properties 
-        // are always present and correctly typed.
-        return session.players.map(sessionPlayer => {
-            const globalPlayer: Player | undefined = globalPlayerMap.get(sessionPlayer.id);
+        // FIX: Explicitly specify the type of `sessionPlayer` as `SessionPlayer` in the map function.
+        // This resolves a TypeScript type inference issue where `sessionPlayer` was being treated
+        // as `unknown`, leading to errors when accessing its properties. The logic enriches
+        // session players with the latest global player data if available.
+        return session.players.map((sessionPlayer: SessionPlayer) => {
+            const globalPlayer = globalPlayerMap.get(sessionPlayer.id);
             if (globalPlayer) {
+                // Enrich session player with potentially updated global data
                 return {
                     id: sessionPlayer.id,
                     name: globalPlayer.name,
@@ -41,8 +41,9 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                     avatar: globalPlayer.avatar || sessionPlayer.avatar,
                 };
             }
-            // If global player not found (e.g., deleted), use session data,
-            // but reconstruct it to ensure a clean object conforming to SessionPlayer.
+            // If global player is not found (e.g., has been deleted),
+            // use the player data stored within the session.
+            // Reconstruct the object to ensure it's a clean SessionPlayer instance.
             return {
                 id: sessionPlayer.id,
                 name: sessionPlayer.name,
@@ -117,7 +118,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
                 <div>
                     <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
-                        <h3 className="text-xl font-semibold mb-4">Live-Ranking (Dieses Spiel)</h3>
+                        <h3 className="text-xl font-semibold mb-4">Live-Ranking</h3>
                         <div className="space-y-3">{sortedPlayers.map(p => (
                             <div key={p.id} className="flex items-center justify-between bg-slate-800/80 p-3 rounded-lg">
                                 <div className="flex items-center gap-4">
@@ -155,7 +156,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                 </div>
                 <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
                     <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
-                        <h3 className="text-xl font-semibold">Punkteverlauf (Dieses Spiel)</h3>
+                        <h3 className="text-xl font-semibold">Punkteverlauf</h3>
                         <ChartModeToggle
                             currentMode={chartMode}
                             onChange={(mode) => setChartMode(mode as 'cumulative' | 'perUpdate')}
