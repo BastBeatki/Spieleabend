@@ -1,12 +1,12 @@
-
 import React, { useState, useMemo } from 'react';
-import { Session, Game, PointUpdate, View, Player } from '../../types';
+import { Session, Game, PointUpdate, View, Player, SessionPlayer } from '../../types';
 import * as fb from '../../services/firebaseService';
 import { Header } from '../ui/Header';
 import { Modal } from '../ui/Modal';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Area } from 'recharts';
-import { UndoIcon, PlayerAvatar } from '../ui/Icons';
+import { UndoIcon, PlayerAvatar, BuzzerIcon } from '../ui/Icons';
 import { ChartModeToggle, CustomChartTooltip } from '../ui/ChartModeToggle';
+import { BuzzerView } from './BuzzerView';
 
 declare const Recharts: any;
 
@@ -22,17 +22,24 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
     const [scoresToAdd, setScoresToAdd] = useState<{ [playerId: string]: number }>({});
     const [modal, setModal] =useState<{ isOpen: boolean; title: string; message: string; onConfirm?: (confirmed: boolean) => void }>({ isOpen: false, title: '', message: '' });
     const [chartMode, setChartMode] = useState<'cumulative' | 'perUpdate'>('cumulative');
+    const [isBuzzerActive, setIsBuzzerActive] = useState(false);
     
-    const enrichedSessionPlayers = useMemo(() => {
+    const enrichedSessionPlayers: SessionPlayer[] = useMemo(() => {
         const globalPlayerMap = new Map(players.map(p => [p.id, p]));
+        // FIX: Rewrite with a type guard to help TypeScript's type inference.
         return session.players.map(sessionPlayer => {
             const globalPlayer = globalPlayerMap.get(sessionPlayer.id);
-            return {
-                ...sessionPlayer,
-                avatar: globalPlayer?.avatar,
-                name: globalPlayer?.name || sessionPlayer.name,
-                color: globalPlayer?.color || sessionPlayer.color,
-            };
+            if (globalPlayer) {
+                return {
+                    ...sessionPlayer,
+                    // Use global player data, with fallback for optional avatar
+                    avatar: globalPlayer.avatar || sessionPlayer.avatar,
+                    name: globalPlayer.name,
+                    color: globalPlayer.color,
+                };
+            }
+            // If global player not found (e.g., deleted), use session data
+            return sessionPlayer;
         });
     }, [session.players, players]);
 
@@ -95,7 +102,18 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
 
     return (
         <>
+            {isBuzzerActive && <BuzzerView players={enrichedSessionPlayers} onClose={() => setIsBuzzerActive(false)} />}
             <Header title={game.name} onBack={() => navigate('scoreboard', { sessionId: session.id })} backText="Zurück zur Session" />
+            
+            <div className="mb-8">
+                <button
+                    onClick={() => setIsBuzzerActive(true)}
+                    className="w-full bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300 shadow-[0_0_15px_rgba(245,158,11,0.4)] hover:shadow-[0_0_25px_rgba(234,88,12,0.6)] flex items-center justify-center gap-2"
+                >
+                    <BuzzerIcon /> Buzzerrunde starten
+                </button>
+            </div>
+            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div>
                     <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
@@ -123,10 +141,10 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                             </div>
                         ))}</div>
                         <div className="flex gap-4">
-                            <button onClick={handleUndo} className="w-1/3 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-3 px-5 rounded-lg text-lg transition duration-300" title="Letzte Eingabe rückgängig machen">
+                            <button onClick={handleUndo} className="flex-shrink-0 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-3 px-5 rounded-lg text-lg transition duration-300" title="Letzte Eingabe rückgängig machen">
                                 <UndoIcon />
                             </button>
-                            <button onClick={handleUpdateScores} className="w-2/3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300 shadow-[0_0_15px_rgba(99,102,241,0.4)] hover:shadow-[0_0_25px_rgba(124,58,237,0.6)]">
+                            <button onClick={handleUpdateScores} className="flex-grow bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300 shadow-[0_0_15px_rgba(99,102,241,0.4)] hover:shadow-[0_0_25px_rgba(124,58,237,0.6)]">
                                 Punkte aktualisieren
                             </button>
                         </div>

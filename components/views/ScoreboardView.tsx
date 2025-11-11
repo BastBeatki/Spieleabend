@@ -113,7 +113,8 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
         games.forEach(game => {
             if(!stats[game.categoryId]) stats[game.categoryId] = { name: game.categoryName, scores: {} };
             Object.entries(game.gameScores).forEach(([pId, score]) => {
-                stats[game.categoryId].scores[pId] = (stats[game.categoryId].scores[pId] || 0) + score;
+                // FIX: Cast score to number to allow addition.
+                stats[game.categoryId].scores[pId] = (stats[game.categoryId].scores[pId] || 0) + (score as number);
             });
         });
         return Object.values(stats);
@@ -269,7 +270,8 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                     <div className="space-y-4 max-h-80 overflow-y-auto pr-2">{categoryStats.map(cat => (
                         <div key={cat.name} className="bg-slate-800/80 p-3 rounded-lg">
                             <h4 className="font-semibold mb-2">{cat.name}</h4>
-                            <div className="space-y-1">{Object.entries(cat.scores).sort(([,a],[,b]) => b - a).map(([pId, score]) => {
+                            {/* FIX: Cast score values to number for sorting. */}
+                            <div className="space-y-1">{Object.entries(cat.scores).sort(([,a],[,b]) => (b as number) - (a as number)).map(([pId, score]) => {
                                 const player = enrichedSessionPlayers.find(p => p.id === pId);
                                 return player ? <div key={pId} className="flex justify-between text-sm"><span style={{color: player.color}}>{player.name}</span><span className="font-bold">{score} Pkt</span></div> : null;
                             })}</div>
@@ -283,13 +285,15 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                     <div key={g.id} className="group bg-slate-800/80 p-4 rounded-lg transition-all duration-300 border border-transparent hover:border-blue-500/30">
                          <div className="flex justify-between items-center cursor-pointer" onClick={() => navigate('liveGame', { sessionId: session.id, gameId: g.id })}>
                             <h4 className="font-semibold text-lg">{g.gameNumber}. {g.name} <span className="text-xs text-slate-400 font-normal ml-2">{g.categoryName}</span></h4>
-                            <span className="text-lg font-bold">{Object.values(g.gameScores).reduce((a, b) => a + b, 0)} Pkt</span>
+                            {/* FIX: Cast score value to number for reduce operation. */}
+                            <span className="text-lg font-bold">{Object.values(g.gameScores).reduce((a, b) => a + (b as number), 0)} Pkt</span>
                         </div>
                         <div className="flex justify-between items-center mt-2">
                             <div className="text-sm text-blue-400">🏆 {
                                 Object.entries(g.gameScores)
-                                .sort(([,a],[,b]) => b - a)
-                                .filter(([,score],_,arr) => score > 0 && score === arr[0][1])
+                                // FIX: Cast score values to number for sorting and filtering.
+                                .sort(([,a],[,b]) => (b as number) - (a as number))
+                                .filter(([,score],_,arr) => (score as number) > 0 && score === arr[0][1])
                                 .map(([pId])=>enrichedSessionPlayers.find(p=>p.id===pId)?.name).join(', ')
                             }</div>
                              <button onClick={() => handleDeleteGame(g.id, g.name)} className="delete-btn opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 p-1"><TrashIcon size={20} /></button>

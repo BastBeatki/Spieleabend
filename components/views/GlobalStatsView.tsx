@@ -50,7 +50,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
         const scores: { [playerId: string]: number } = {};
         sessions.forEach(s => {
             Object.entries(s.totalScores).forEach(([pid, score]) => {
-                scores[pid] = (scores[pid] || 0) + score;
+                scores[pid] = (scores[pid] || 0) + (score as number);
             });
         });
         return players
@@ -90,7 +90,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
         const leaderboardScores: { [pid: string]: number } = {};
         filteredGames.forEach(g => {
             Object.entries(g.gameScores).forEach(([pid, score]) => {
-                leaderboardScores[pid] = (leaderboardScores[pid] || 0) + score;
+                leaderboardScores[pid] = (leaderboardScores[pid] || 0) + (score as number);
             });
         });
         const leaderboard = players
@@ -112,149 +112,124 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                     dataPoint[p.name] = game.gameScores[p.id] || 0;
                 });
             }
+            // FIX: Use the correct variable name 'timelineData' instead of 'data'.
             timelineData.push(dataPoint);
         });
-        
+
         return { leaderboard, timelineData };
-    }, [selectedCategoryId, allGames, players, chartMode]);
 
+    }, [allGames, selectedCategoryId, players, chartMode]);
 
-    if (isLoading) {
-        return <LoadingSpinner text="Lade Statistiken..." />;
-    }
+    if (isLoading) return <LoadingSpinner text="Lade Statistiken..." />;
 
     return (
         <>
             <Header title="Karriere-Statistiken" onBack={() => navigate('home')} backText="Zurück zur Übersicht" />
-            <div className="space-y-8">
-                 <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
-                    <h3 className="text-xl font-semibold mb-4">Ewige Bestenliste</h3>
-                    <div className="space-y-3">
-                        {globalLeaderboard.map((p, index) => (
-                             <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg shadow-md">
-                                <div className="w-10 text-center font-bold">
-                                   <span className={`w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br ${getRankBadge(index + 1)} ${getRankText(index + 1)}`}>{index + 1}</span>
-                                </div>
-                                <div className="flex-grow flex items-center gap-3 ml-3">
-                                   <PlayerAvatar avatar={p.avatar} size={40} />
-                                   <span className="font-bold text-lg text-slate-100">{p.name}</span>
-                                </div>
-                                <div className="text-2xl font-black text-white">{p.score} <span className="text-sm font-normal text-slate-400">Punkte</span></div>
-                            </div>
-                        ))}
+            
+            <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
+                <h3 className="text-xl font-semibold mb-4">Gesamt-Leaderboard</h3>
+                <div className="space-y-3">{globalLeaderboard.map((p, i) => (
+                     <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg shadow-md">
+                        <div className="w-10 text-center font-bold"><span className={`w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br ${getRankBadge(i+1)} ${getRankText(i+1)}`}>{i+1}</span></div>
+                        <div className="flex-grow flex items-center gap-3 ml-3">
+                           <PlayerAvatar avatar={p.avatar} size={40} />
+                           <span className="font-bold text-lg text-slate-100">{p.name}</span>
+                        </div>
+                        <div className="text-2xl font-black text-white">{p.score} <span className="text-sm font-normal text-slate-400">Punkte</span></div>
                     </div>
+                ))}</div>
+            </div>
+
+            <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
+                 <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
+                    <h3 className="text-xl font-semibold">Punkteverlauf (Gesamt)</h3>
+                    <ChartModeToggle
+                        currentMode={chartMode}
+                        onChange={(mode) => setChartMode(mode as 'perSession' | 'cumulative')}
+                        options={[
+                            { value: 'perSession', label: 'Pro Session' },
+                            { value: 'cumulative', label: 'Kumulativ' },
+                        ]}
+                    />
                 </div>
-                <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
-                    <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
-                        <h3 className="text-xl font-semibold">Punkteverlauf über alle Sessions</h3>
-                         <ChartModeToggle
-                            currentMode={chartMode}
-                            onChange={(mode) => setChartMode(mode)}
-                            options={[
-                                { value: 'perSession', label: 'Pro Session' },
-                                { value: 'cumulative', label: 'Kumulativ' },
-                            ]}
-                        />
-                    </div>
-                    <div className="relative h-80 md:h-96">
-                        {timelineData.length > 1 && (
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={timelineData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                <defs>
-                                    {players.map(p => (
-                                        <linearGradient key={`color-${p.id}`} id={`color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
-                                            <stop offset="95%" stopColor={p.color} stopOpacity={0}/>
-                                        </linearGradient>
-                                    ))}
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.1)" />
-                                <XAxis dataKey="name" stroke="#64748b" tick={{ fontSize: 12 }} angle={-20} textAnchor="end" height={60} />
-                                <YAxis stroke="#64748b" />
-                                <Tooltip content={<CustomChartTooltip />} />
-                                <Legend wrapperStyle={{ color: '#cbd5e1', paddingTop: '20px' }} />
+                <div className="relative h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={timelineData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                             <defs>
                                 {players.map(p => (
-                                    <React.Fragment key={p.id}>
-                                        <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')})`} />
-                                        <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 6, stroke: 'rgba(255,255,255,0.3)', strokeWidth: 4}} />
-                                    </React.Fragment>
+                                    <linearGradient key={`color-${p.id}`} id={`color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
+                                        <stop offset="95%" stopColor={p.color} stopOpacity={0}/>
+                                    </linearGradient>
                                 ))}
-                            </LineChart>
-                        </ResponsiveContainer>
-                        )}
-                    </div>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.1)" />
+                            <XAxis dataKey="name" stroke="#64748b" tick={{ fontSize: 12, angle: -20, textAnchor: 'end', height: 60 }} />
+                            <YAxis stroke="#64748b" />
+                            <Tooltip content={<CustomChartTooltip />} />
+                            <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                            {players.map(p => (
+                                <React.Fragment key={p.id}>
+                                    <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')})`} />
+                                    <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 6, stroke: 'rgba(255,255,255,0.3)', strokeWidth: 4}} />
+                                </React.Fragment>
+                            ))}
+                        </LineChart>
+                    </ResponsiveContainer>
                 </div>
-                <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
-                    <h3 className="text-xl font-semibold mb-2 border-b border-slate-700 pb-4">Statistiken nach Kategorie</h3>
-                    <p className="text-slate-400 my-4">Wähle eine Kategorie, um die Bestenliste und den Punkteverlauf nur für diese Spiele anzuzeigen.</p>
-                    <select value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 mb-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-                        <option value="">Kategorie auswählen</option>
-                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                    
-                    {selectedCategoryId && categoryStats && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            </div>
+
+            <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
+                <h3 className="text-xl font-semibold mb-4">Statistiken nach Kategorie</h3>
+                <select value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 mb-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+                    <option value="">Wähle eine Kategorie...</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                {selectedCategoryId && categoryStats && (
+                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <div>
-                            <h4 className="text-lg font-semibold mb-2">Bestenliste</h4>
-                            <div className="space-y-2">
-                                {categoryStats.leaderboard.length > 0 ? categoryStats.leaderboard.map((p, index) => (
-                                    <div key={p.id} className="flex items-center bg-slate-800/50 p-2 rounded-lg">
-                                        <div className="w-8 text-center font-bold">
-                                           <span className={`w-6 h-6 flex items-center justify-center rounded-full text-sm bg-gradient-to-br ${getRankBadge(index + 1)} ${getRankText(index + 1)}`}>{index + 1}</span>
-                                        </div>
-                                        <div className="flex-grow flex items-center gap-3 ml-2">
-                                           <PlayerAvatar avatar={p.avatar} size={28} />
-                                           <span className="font-bold text-slate-100">{p.name}</span>
-                                        </div>
-                                        <div className="text-lg font-black text-white">{p.score}</div>
+                             <h4 className="font-semibold mb-2">Leaderboard: {categories.find(c=>c.id === selectedCategoryId)?.name}</h4>
+                              <div className="space-y-3 max-h-80 overflow-y-auto pr-2">{categoryStats.leaderboard.map((p, i) => (
+                                <div key={p.id} className="flex items-center justify-between bg-slate-800/80 p-3 rounded-lg">
+                                    <div className="flex items-center gap-3">
+                                        <PlayerAvatar avatar={p.avatar} size={32} />
+                                        <span className="font-bold text-slate-100">{p.name}</span>
                                     </div>
-                                )) : <p className="text-slate-500">Keine Punkte in dieser Kategorie.</p>}
-                            </div>
+                                    <span className="text-xl font-black">{p.score}</span>
+                                </div>
+                            ))}</div>
                         </div>
                         <div>
-                             <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
-                                <h4 className="text-lg font-semibold">Punkteverlauf</h4>
-                                 <ChartModeToggle
-                                    currentMode={chartMode}
-                                    onChange={(mode) => setChartMode(mode)}
-                                    options={[
-                                        { value: 'perSession', label: 'Pro Spiel' },
-                                        { value: 'cumulative', label: 'Kumulativ' },
-                                    ]}
-                                />
-                            </div>
+                             <h4 className="font-semibold mb-2">Punkteverlauf: {categories.find(c=>c.id === selectedCategoryId)?.name}</h4>
                             <div className="relative h-80">
-                                 {categoryStats.timelineData.length > 1 ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={categoryStats.timelineData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                            <defs>
-                                                {players.map(p => (
-                                                    <linearGradient key={`colorCat-${p.id}`} id={`colorCat-${p.id.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
-                                                        <stop offset="95%" stopColor={p.color} stopOpacity={0}/>
-                                                    </linearGradient>
-                                                ))}
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.1)" />
-                                            <XAxis dataKey="name" stroke="#64748b" tick={{ fontSize: 10 }} angle={-15} textAnchor="end" height={50} />
-                                            <YAxis stroke="#64748b" />
-                                            <Tooltip content={<CustomChartTooltip />} />
-                                            <Legend wrapperStyle={{ color: '#cbd5e1', paddingTop: '20px' }} />
-                                            {players.filter(p => categoryStats.leaderboard.some(lp => lp.id === p.id)).map(p => (
-                                                <React.Fragment key={`line-${p.id}`}>
-                                                    <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#colorCat-${p.id.replace(/[^a-zA-Z0-9]/g, '')})`} />
-                                                    <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 5, stroke: 'rgba(255,255,255,0.3)', strokeWidth: 4}} />
-                                                </React.Fragment>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={categoryStats.timelineData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                        <defs>
+                                            {players.map(p => (
+                                                <linearGradient key={`color-${p.id}-cat`} id={`color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}-cat`} x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
+                                                    <stop offset="95%" stopColor={p.color} stopOpacity={0}/>
+                                                </linearGradient>
                                             ))}
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                 ) : <div className="flex items-center justify-center h-full text-slate-500">Nicht genügend Daten für Grafik.</div>}
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 116, 139, 0.1)" />
+                                        <XAxis dataKey="name" stroke="#64748b" tick={false} />
+                                        <YAxis stroke="#64748b" />
+                                        <Tooltip content={<CustomChartTooltip />} />
+                                        <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                                        {players.map(p => (
+                                            <React.Fragment key={p.id}>
+                                                <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}-cat)`} />
+                                                <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 6}} />
+                                            </React.Fragment>
+                                        ))}
+                                    </LineChart>
+                                </ResponsiveContainer>
                             </div>
                         </div>
-                    </div>
-                    )}
-                </div>
+                     </div>
+                )}
             </div>
         </>
     );
-};
+}
