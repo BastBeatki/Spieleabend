@@ -121,6 +121,74 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
             });
 
     }, [sessions, players, allGames]);
+
+    const { gameWinsLeaderboard, categoryWinsLeaderboard } = useMemo(() => {
+        if (!allGames || !players.length) {
+            return { gameWinsLeaderboard: [], categoryWinsLeaderboard: [] };
+        }
+
+        // --- Calculate Game Wins ---
+        const gameWinStats: { [playerId: string]: { gamesWon: number } } = {};
+        players.forEach(p => {
+            gameWinStats[p.id] = { gamesWon: 0 };
+        });
+
+        allGames.forEach(game => {
+            const winnerIds = getGameWinnerIds(game.gameScores);
+            winnerIds.forEach(winnerId => {
+                if (gameWinStats[winnerId]) {
+                    gameWinStats[winnerId].gamesWon++;
+                }
+            });
+        });
+
+        const finalGameWinsLeaderboard = players
+            .map(p => ({ ...p, ...gameWinStats[p.id] }))
+            .sort((a, b) => b.gamesWon - a.gamesWon);
+
+        // --- Calculate Category Wins (Dominance) ---
+        const winsByCategory: { [catId: string]: { [pId: string]: number } } = {};
+
+        allGames.forEach(game => {
+            if (!winsByCategory[game.categoryId]) {
+                winsByCategory[game.categoryId] = {};
+            }
+            const winnerIds = getGameWinnerIds(game.gameScores);
+            winnerIds.forEach(winnerId => {
+                if (players.some(p => p.id === winnerId)) {
+                     winsByCategory[game.categoryId][winnerId] = (winsByCategory[game.categoryId][winnerId] || 0) + 1;
+                }
+            });
+        });
+
+        const categoryDominance: { [pId: string]: number } = {};
+        players.forEach(p => (categoryDominance[p.id] = 0));
+
+        Object.values(winsByCategory).forEach(playerWins => {
+            const scores = Object.values(playerWins);
+            if (scores.length === 0) return;
+            
+            const maxWins = Math.max(...scores);
+            if (maxWins > 0) {
+                Object.entries(playerWins).forEach(([playerId, wins]) => {
+                    if (wins === maxWins) {
+                        if (categoryDominance[playerId] !== undefined) {
+                            categoryDominance[playerId]++;
+                        }
+                    }
+                });
+            }
+        });
+
+        const finalCategoryWinsLeaderboard = players
+            .map(p => ({ ...p, categoriesWon: categoryDominance[p.id] || 0 }))
+            .sort((a, b) => b.categoriesWon - a.categoriesWon);
+
+        return {
+            gameWinsLeaderboard: finalGameWinsLeaderboard,
+            categoryWinsLeaderboard: finalCategoryWinsLeaderboard,
+        };
+    }, [allGames, players]);
     
     const sortedSessions = useMemo(() => [...sessions].sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis()), [sessions]);
 
@@ -202,7 +270,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
             <Header title="Karriere-Statistiken" onBack={() => navigate('home')} backText="Zurück zur Übersicht" />
             
             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
-                <h3 className="text-xl font-semibold mb-4">Gesamt-Leaderboard</h3>
+                <h3 className="text-xl font-semibold mb-4">Gesamt-Leaderboard (nach Session-Siegen)</h3>
                 <div className="space-y-3">{globalLeaderboard.map((p, i) => (
                      <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg shadow-md">
                         <div className="w-10 text-center font-bold"><span className={`w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br ${getRankBadge(i+1)} ${getRankText(i+1)}`}>{i+1}</span></div>
@@ -216,6 +284,46 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                         </div>
                     </div>
                 ))}</div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
+                    <h3 className="text-xl font-semibold mb-4">Spiele gewonnen</h3>
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
+                        {gameWinsLeaderboard.map((p, i) => (
+                            <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg">
+                                <div className="w-8 text-center font-bold text-slate-400">{i + 1}.</div>
+                                <div className="flex-grow flex items-center gap-3 ml-2">
+                                    <PlayerAvatar avatar={p.avatar} size={40} />
+                                    <span className="font-bold text-md text-slate-100">{p.name}</span>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-lg font-black text-white">{p.gamesWon}</span>
+                                    <span className="text-sm font-normal text-slate-400 ml-1">Spiele</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
+                    <h3 className="text-xl font-semibold mb-4">Kategorien gewonnen</h3>
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
+                        {categoryWinsLeaderboard.map((p, i) => (
+                            <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg">
+                                <div className="w-8 text-center font-bold text-slate-400">{i + 1}.</div>
+                                <div className="flex-grow flex items-center gap-3 ml-2">
+                                    <PlayerAvatar avatar={p.avatar} size={40} />
+                                    <span className="font-bold text-md text-slate-100">{p.name}</span>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-lg font-black text-white">{p.categoriesWon}</span>
+                                    <span className="text-sm font-normal text-slate-400 ml-1">Kategorien</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
 
             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
