@@ -207,6 +207,8 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
 
     const availablePlayersToAdd = players.filter(p => !session.players.some(sp => sp.id === p.id));
     
+    const imageSrc = session.coverImage || (session.localCoverImage ? `/images/sessions/${session.localCoverImage}` : undefined);
+
     return (
         <>
             <div className="flex justify-between items-center mb-8 gap-4">
@@ -214,8 +216,8 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
 
                 <div className="flex items-center gap-4 flex-grow justify-center min-w-0">
                     <div className="w-24 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-slate-800 border border-slate-700 hidden sm:block">
-                        {session.coverImage ? (
-                            <img src={session.coverImage} alt={session.name} className="w-full h-full object-cover"/>
+                        {imageSrc ? (
+                            <img src={imageSrc} alt={session.name} className="w-full h-full object-cover"/>
                         ) : (
                             <div className="w-full h-full flex items-center justify-center text-slate-600">
                                 <UserIcon size={32} />
@@ -245,7 +247,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                      <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg shadow-md">
                         <div className="w-10 text-center font-bold"><span className={`w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br ${getRankBadge(i+1)} ${getRankText(i+1)}`}>{i+1}</span></div>
                         <div className="flex-grow flex items-center gap-4 ml-3">
-                           <PlayerAvatar avatar={p.avatar} size={48} />
+                           <PlayerAvatar avatar={p.avatar} localAvatar={p.localAvatar} size={48} />
                            <span className="font-bold text-lg text-slate-100">{p.name}</span>
                         </div>
                         <div className="text-right flex items-baseline justify-end gap-4">
@@ -400,7 +402,7 @@ const ManageSessionPlayersModal: React.FC<{isOpen: boolean, onClose: () => void,
                      <label key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg cursor-pointer hover:bg-slate-700/80 transition">
                         <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => togglePlayer(p.id)} className="h-6 w-6 rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900" />
                         <div className="ml-4 flex items-center gap-4">
-                            <PlayerAvatar avatar={p.avatar} size={40} />
+                            <PlayerAvatar avatar={p.avatar} localAvatar={p.localAvatar} size={40} />
                             <span className="text-lg" style={{ color: p.color }}>{p.name}</span>
                         </div>
                     </label>
@@ -419,7 +421,7 @@ const EditSessionModal: React.FC<{isOpen: boolean, onClose: () => void, session:
     useEffect(() => {
         if (isOpen) {
             setName(session.name);
-            setCoverImage(session.coverImage);
+            setCoverImage(session.coverImage || (session.localCoverImage ? `/images/sessions/${session.localCoverImage}` : undefined));
             setError('');
         }
     }, [isOpen, session]);

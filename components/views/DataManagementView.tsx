@@ -162,7 +162,7 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ players,
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-4">
-                                    <PlayerAvatar avatar={p.avatar} size={48} />
+                                    <PlayerAvatar avatar={p.avatar} localAvatar={p.localAvatar} size={48} />
                                     <span className="font-bold text-lg" style={{color: p.color}}>{p.name}</span>
                                 </div>
                             )}
@@ -174,7 +174,7 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ players,
                                     </>
                                 ) : (
                                     <>
-                                        <button onClick={() => { setEditingPlayerId(p.id); setEditingPlayerName(p.name); setEditingPlayerColor(p.color); setEditingPlayerAvatar(p.avatar); }} className="opacity-0 group-hover:opacity-100 text-blue-400 hover:text-blue-300 p-1"><EditIcon /></button>
+                                        <button onClick={() => { setEditingPlayerId(p.id); setEditingPlayerName(p.name); setEditingPlayerColor(p.color); setEditingPlayerAvatar(p.avatar || (p.localAvatar ? `/images/players/${p.localAvatar}`: undefined) ); }} className="opacity-0 group-hover:opacity-100 text-blue-400 hover:text-blue-300 p-1"><EditIcon /></button>
                                         <button onClick={() => handleDeletePlayer(p.id, p.name)} className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 p-1"><TrashIcon /></button>
                                     </>
                                 )}

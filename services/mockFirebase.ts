@@ -32,6 +32,7 @@ const enrichSessionPlayers = (session: Session | Omit<Session, 'id'>) => {
             sp.name = globalPlayer.name;
             sp.color = globalPlayer.color;
             sp.avatar = globalPlayer.avatar;
+            sp.localAvatar = globalPlayer.localAvatar;
         }
     });
 };
@@ -233,7 +234,7 @@ export const deleteDocument = async (collectionName: string, docId: string) => {
 
 export const startSession = async (sessionName: string, selectedPlayers: Player[], coverImage?: string) => {
     const totalScores = selectedPlayers.reduce((acc, p) => ({ ...acc, [p.id]: 0 }), {});
-    const sessionPlayers: SessionPlayer[] = selectedPlayers.map(({ id, name, color, avatar }) => ({ id, name, color, avatar }));
+    const sessionPlayers: SessionPlayer[] = selectedPlayers.map(({ id, name, color, avatar, localAvatar }) => ({ id, name, color, avatar, localAvatar }));
     
     const newSession = {
         id: generateId(),
@@ -374,7 +375,8 @@ export const exportData = async (): Promise<FullBackup> => {
             _id: p.id,
             name: p.name,
             color: p.color,
-            avatar: p.avatar
+            avatar: p.avatar,
+            localAvatar: p.localAvatar
         })),
         categories: dbState.categories.map(c => ({
             _id: c.id,
@@ -387,6 +389,7 @@ export const exportData = async (): Promise<FullBackup> => {
             players: s.players,
             totalScores: s.totalScores,
             coverImage: s.coverImage,
+            localCoverImage: s.localCoverImage,
             games: s.games.map(g => ({
                 _id: g.id,
                 name: g.name,

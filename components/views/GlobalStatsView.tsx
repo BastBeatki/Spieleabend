@@ -275,7 +275,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                      <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg shadow-md">
                         <div className="w-10 text-center font-bold"><span className={`w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br ${getRankBadge(i+1)} ${getRankText(i+1)}`}>{i+1}</span></div>
                         <div className="flex-grow flex items-center gap-4 ml-3">
-                           <PlayerAvatar avatar={p.avatar} size={48} />
+                           <PlayerAvatar avatar={p.avatar} localAvatar={p.localAvatar} size={48} />
                            <span className="font-bold text-lg text-slate-100">{p.name}</span>
                         </div>
                         <div className="text-right flex items-baseline justify-end gap-4">
@@ -294,7 +294,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                             <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg">
                                 <div className="w-8 text-center font-bold text-slate-400">{i + 1}.</div>
                                 <div className="flex-grow flex items-center gap-3 ml-2">
-                                    <PlayerAvatar avatar={p.avatar} size={40} />
+                                    <PlayerAvatar avatar={p.avatar} localAvatar={p.localAvatar} size={40} />
                                     <span className="font-bold text-md text-slate-100">{p.name}</span>
                                 </div>
                                 <div className="text-right">
@@ -313,7 +313,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                             <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg">
                                 <div className="w-8 text-center font-bold text-slate-400">{i + 1}.</div>
                                 <div className="flex-grow flex items-center gap-3 ml-2">
-                                    <PlayerAvatar avatar={p.avatar} size={40} />
+                                    <PlayerAvatar avatar={p.avatar} localAvatar={p.localAvatar} size={40} />
                                     <span className="font-bold text-md text-slate-100">{p.name}</span>
                                 </div>
                                 <div className="text-right">
@@ -378,7 +378,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                               <div className="space-y-3 max-h-80 overflow-y-auto pr-2">{categoryStats.leaderboard.map((p, i) => (
                                 <div key={p.id} className="flex items-center justify-between bg-slate-800/80 p-3 rounded-lg">
                                     <div className="flex items-center gap-4">
-                                        <PlayerAvatar avatar={p.avatar} size={40} />
+                                        <PlayerAvatar avatar={p.avatar} localAvatar={p.localAvatar} size={40} />
                                         <span className="font-bold text-lg text-slate-100">{p.name}</span>
                                     </div>
                                     <div className="text-right flex items-baseline justify-end gap-4">

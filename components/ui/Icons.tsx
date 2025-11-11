@@ -73,11 +73,16 @@ export const BuzzerIcon: React.FC<IconProps> = ({ size = 24, className }) => (
     </svg>
 );
 
-export const PlayerAvatar: React.FC<{ avatar?: string; size?: number; className?: string }> = ({ avatar, size = 40, className = '' }) => {
+export const PlayerAvatar: React.FC<{ avatar?: string; localAvatar?: string; size?: number; className?: string }> = ({ avatar, localAvatar, size = 40, className = '' }) => {
     const style = { width: `${size}px`, height: `${size}px` };
-    if (avatar) {
-        return <img src={avatar} alt="Avatar" className={`rounded-full object-cover flex-shrink-0 ${className}`} style={style} />;
+    
+    // Prioritize user-uploaded Base64 avatar. If not present, construct path for local avatar.
+    const imageSrc = avatar || (localAvatar ? `/images/players/${localAvatar}` : undefined);
+
+    if (imageSrc) {
+        return <img src={imageSrc} alt="Avatar" className={`rounded-full object-cover flex-shrink-0 ${className}`} style={style} />;
     }
+    
     return (
         <div className={`rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0 ${className}`} style={style}>
             <UserIcon size={size * 0.6} className="text-slate-400" />

@@ -3,17 +3,20 @@ export const mockBackupData = {
     {
       "name": "BastBeat",
       "color": "#3b82f6",
-      "_id": "player_bastbeat_id"
+      "_id": "player_bastbeat_id",
+      "localAvatar": "player_bastbeat_id.jpg"
     },
     {
       "color": "#ef4444",
       "name": "Schütti",
-      "_id": "player_schuetti_id"
+      "_id": "player_schuetti_id",
+      "localAvatar": "player_schuetti_id.jpg"
     },
     {
       "name": "Schum",
       "color": "#be38f3",
-      "_id": "xJcstcD1MkC8VOjeAl3Y"
+      "_id": "xJcstcD1MkC8VOjeAl3Y",
+      "localAvatar": "xJcstcD1MkC8VOjeAl3Y.jpg"
     }
   ],
   "categories": [
@@ -63,6 +66,7 @@ export const mockBackupData = {
       ],
       "createdAt": "2025-11-09T19:02:05.573Z",
       "_id": "6OGQS3PSMTEQwol0p9FH",
+      "localCoverImage": "6OGQS3PSMTEQwol0p9FH.jpg",
       "games": [
         {
           "categoryId": "iSMCfdNvUxyxepe84014",
@@ -116,6 +120,7 @@ export const mockBackupData = {
       "name": "Wer stiehlt mir die Show | 09.11.2025",
       "createdAt": "2025-11-09T19:24:40.540Z",
       "_id": "Hs4dHLYTLerbkIbWrsqf",
+      "localCoverImage": "Hs4dHLYTLerbkIbWrsqf.jpg",
       "games": [
         {
           "name": "Finale",
@@ -475,6 +480,7 @@ export const mockBackupData = {
         "player_bastbeat_id": 4
       },
       "_id": "kqvVeWjxJiCgYfY6zgPz",
+      "localCoverImage": "kqvVeWjxJiCgYfY6zgPz.jpg",
       "games": [
         {
           "createdAt": "2025-11-02T00:04:15.611Z",
@@ -684,6 +690,7 @@ export const mockBackupData = {
         }
       ],
       "_id": "qOdVP9S4e1qs29ChEpyJ",
+      "localCoverImage": "qOdVP9S4e1qs29ChEpyJ.jpg",
       "games": [
         {
           "gameNumber": 2,
@@ -957,6 +964,7 @@ export const mockBackupData = {
       ],
       "name": "Wer stiehlt mir die Show | 26.10.2025",
       "_id": "session_wsmws_20251026",
+      "localCoverImage": "session_wsmws_20251026.jpg",
       "games": [
         {
           "categoryId": "cat_quiz_allgemein_id",

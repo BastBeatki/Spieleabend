@@ -10,6 +10,7 @@ export interface Player {
     name: string;
     color: string;
     avatar?: string;
+    localAvatar?: string;
 }
 
 export interface SessionPlayer {
@@ -17,6 +18,7 @@ export interface SessionPlayer {
     name: string;
     color: string;
     avatar?: string;
+    localAvatar?: string;
 }
 
 export interface Category {
@@ -31,6 +33,7 @@ export interface Session {
     players: SessionPlayer[];
     totalScores: { [playerId: string]: number };
     coverImage?: string;
+    localCoverImage?: string;
 }
 
 export interface Game {
@@ -61,6 +64,7 @@ interface PlayerDoc extends BaseDoc {
     name: string;
     color: string;
     avatar?: string;
+    localAvatar?: string;
 }
 
 interface CategoryDoc extends BaseDoc {
@@ -89,6 +93,7 @@ interface SessionDoc extends BaseDoc {
     totalScores: { [playerId: string]: number };
     games: GameDoc[];
     coverImage?: string;
+    localCoverImage?: string;
 }
 
 export interface FullBackup {

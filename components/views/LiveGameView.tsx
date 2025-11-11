@@ -28,8 +28,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
         const globalPlayerMap = new Map(players.map(p => [p.id, p]));
         // FIX: Explicitly specify the type of `sessionPlayer` as `SessionPlayer` in the map function.
         // This resolves a TypeScript type inference issue where `sessionPlayer` was being treated
-        // as `unknown`, leading to errors when accessing its properties. The logic enriches
-        // session players with the latest global player data if available.
+        // as `unknown`, leading to errors when accessing its properties.
         return session.players.map((sessionPlayer: SessionPlayer) => {
             const globalPlayer = globalPlayerMap.get(sessionPlayer.id);
             if (globalPlayer) {
@@ -39,6 +38,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                     name: globalPlayer.name,
                     color: globalPlayer.color,
                     avatar: globalPlayer.avatar || sessionPlayer.avatar,
+                    localAvatar: globalPlayer.localAvatar || sessionPlayer.localAvatar,
                 };
             }
             // If global player is not found (e.g., has been deleted),
@@ -49,6 +49,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                 name: sessionPlayer.name,
                 color: sessionPlayer.color,
                 avatar: sessionPlayer.avatar,
+                localAvatar: sessionPlayer.localAvatar,
             };
         });
     }, [session.players, players]);
@@ -122,7 +123,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                         <div className="space-y-3">{sortedPlayers.map(p => (
                             <div key={p.id} className="flex items-center justify-between bg-slate-800/80 p-3 rounded-lg">
                                 <div className="flex items-center gap-4">
-                                     <PlayerAvatar avatar={p.avatar} size={40} />
+                                     <PlayerAvatar avatar={p.avatar} localAvatar={p.localAvatar} size={40} />
                                     <span className="font-bold text-slate-100">{p.name}</span>
                                 </div>
                                 <span className="text-xl font-black">{game.gameScores[p.id] || 0}</span>

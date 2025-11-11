@@ -137,14 +137,16 @@ export const HomeView: React.FC<HomeViewProps> = ({ sessions, navigate, setView 
       <div>
         <h2 className="text-2xl font-semibold border-b-2 border-slate-700 pb-2 mb-4">Vergangene Sessions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sessions.length > 0 ? sessions.map(s => (
+          {sessions.length > 0 ? sessions.map(s => {
+            const imageSrc = s.coverImage || (s.localCoverImage ? `/images/sessions/${s.localCoverImage}` : undefined);
+            return (
             <div key={s.id} className="group bg-slate-900/70 rounded-xl overflow-hidden transition-all duration-300 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-800/50 flex flex-col">
               <div 
                 className="relative aspect-video bg-slate-800 cursor-pointer"
                 onClick={() => navigate('scoreboard', { sessionId: s.id })}
               >
-                {s.coverImage ? (
-                  <img src={s.coverImage} alt={s.name} className="w-full h-full object-cover"/>
+                {imageSrc ? (
+                  <img src={imageSrc} alt={s.name} className="w-full h-full object-cover"/>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-slate-600">
                     <UserIcon size={48} />
@@ -173,7 +175,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ sessions, navigate, setView 
                 </div>
               </div>
             </div>
-          )) : <p className="text-slate-500 md:col-span-3">Noch keine Sessions gespielt.</p>}
+          )}) : <p className="text-slate-500 md:col-span-3">Noch keine Sessions gespielt.</p>}
         </div>
       </div>
         <Modal
