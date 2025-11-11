@@ -32,12 +32,26 @@ const getRankText = (rank: number) => {
     }
 }
 
+const getGameWinnerIds = (gameScores: { [playerId: string]: number }): string[] => {
+    const scores = Object.entries(gameScores);
+    if (scores.length === 0) return [];
+
+    const maxScore = scores.reduce((max, [, score]) => Math.max(max, Number(score)), -Infinity);
+
+    if (maxScore <= 0) return []; 
+
+    return scores
+        .filter(([, score]) => Number(score) === maxScore)
+        .map(([playerId]) => playerId);
+};
 
 export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categories, sessions, navigate }) => {
     const [allGames, setAllGames] = useState<(Game & { sessionName: string })[] | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
     const [chartMode, setChartMode] = useState<'perSession' | 'cumulative'>('perSession');
+    const [categoryChartMode, setCategoryChartMode] = useState<'perGame' | 'cumulative'>('perGame');
+
 
      useEffect(() => {
         fb.getAllGames().then(games => {
@@ -47,16 +61,66 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
     }, []);
 
     const globalLeaderboard = useMemo(() => {
-        const scores: { [playerId: string]: number } = {};
+        if (!allGames) return [];
+
+        const gamesBySession = allGames.reduce((acc, game) => {
+            if (!acc[game.sessionId]) acc[game.sessionId] = [];
+            acc[game.sessionId].push(game);
+            return acc;
+        }, {} as { [sessionId: string]: Game[] });
+
+        const getSessionWinnerIds = (session: Session, gamesInSession: Game[]): string[] => {
+            if (gamesInSession.length === 0) return [];
+            
+            const gamesWon: { [playerId: string]: number } = {};
+            session.players.forEach(p => gamesWon[p.id] = 0);
+            gamesInSession.forEach(game => {
+                getGameWinnerIds(game.gameScores).forEach(winnerId => {
+                    if (gamesWon[winnerId] !== undefined) gamesWon[winnerId]++;
+                });
+            });
+
+            const maxWins = Math.max(...Object.values(gamesWon));
+            
+            let potentialWinners = session.players.filter(p => gamesWon[p.id] === maxWins);
+
+            if (potentialWinners.length > 1 || maxWins === 0) {
+                 if (maxWins === 0) potentialWinners = [...session.players];
+                const maxScoreInTie = Math.max(...potentialWinners.map(p => session.totalScores[p.id] || 0));
+                 if (maxScoreInTie <= 0 && maxWins === 0) return [];
+                return potentialWinners.filter(p => (session.totalScores[p.id] || 0) === maxScoreInTie).map(p => p.id);
+            }
+            return potentialWinners.map(p => p.id);
+        };
+        
+        const playerStats: { [playerId: string]: { sessionsWon: number; totalScore: number } } = {};
+        players.forEach(p => {
+            playerStats[p.id] = { sessionsWon: 0, totalScore: 0 };
+        });
+
         sessions.forEach(s => {
+            const gamesInSession = gamesBySession[s.id] || [];
+            const winnerIds = getSessionWinnerIds(s, gamesInSession);
+            winnerIds.forEach(id => {
+                if(playerStats[id]) playerStats[id].sessionsWon++;
+            });
             Object.entries(s.totalScores).forEach(([pid, score]) => {
-                scores[pid] = (scores[pid] || 0) + (score as number);
+                if (playerStats[pid]) {
+                    playerStats[pid].totalScore += Number(score);
+                }
             });
         });
+        
         return players
-            .map(p => ({ ...p, score: scores[p.id] || 0 }))
-            .sort((a, b) => b.score - a.score);
-    }, [sessions, players]);
+            .map(p => ({ ...p, ...playerStats[p.id] }))
+            .sort((a, b) => {
+                if (b.sessionsWon !== a.sessionsWon) {
+                    return b.sessionsWon - a.sessionsWon;
+                }
+                return b.totalScore - a.totalScore;
+            });
+
+    }, [sessions, players, allGames]);
     
     const sortedSessions = useMemo(() => [...sessions].sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis()), [sessions]);
 
@@ -85,24 +149,36 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
         if (!selectedCategoryId || !allGames) return null;
 
         const filteredGames = allGames.filter(g => g.categoryId === selectedCategoryId);
-        const sortedFilteredGames = [...filteredGames].sort((a,b) => a.createdAt.toMillis() - b.createdAt.toMillis());
         
-        const leaderboardScores: { [pid: string]: number } = {};
+        const playerStats: { [pid: string]: { gamesWon: number; score: number } } = {};
+        players.forEach(p => {
+            playerStats[p.id] = { gamesWon: 0, score: 0 };
+        });
+
         filteredGames.forEach(g => {
             Object.entries(g.gameScores).forEach(([pid, score]) => {
-                leaderboardScores[pid] = (leaderboardScores[pid] || 0) + (score as number);
+                if (playerStats[pid]) playerStats[pid].score += Number(score);
+            });
+            const winnerIds = getGameWinnerIds(g.gameScores);
+            winnerIds.forEach(winnerId => {
+                 if (playerStats[winnerId]) playerStats[winnerId].gamesWon++;
             });
         });
+        
         const leaderboard = players
-            .map(p => ({...p, score: leaderboardScores[p.id] || 0}))
-            .filter(p => p.score > 0)
-            .sort((a, b) => b.score - a.score);
-
-        const timelineData: any[] = [{ name: 'Start', ...players.reduce((acc, p) => ({...acc, [p.name]: 0}), {}) }];
+            .map(p => ({...p, ...playerStats[p.id]}))
+            .filter(p => p.gamesWon > 0 || p.score > 0)
+            .sort((a, b) => {
+                if (b.gamesWon !== a.gamesWon) return b.gamesWon - a.gamesWon;
+                return b.score - a.score;
+            });
+        
+        const sortedFilteredGames = [...filteredGames].sort((a,b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+        const categoryTimelineData: any[] = [{ name: 'Start', ...players.reduce((acc, p) => ({...acc, [p.name]: 0}), {}) }];
         const cumulativeScores: { [pid: string]: number } = {};
         sortedFilteredGames.forEach(game => {
             const dataPoint: any = { name: `${game.name} (${game.sessionName})` };
-            if (chartMode === 'cumulative') {
+            if (categoryChartMode === 'cumulative') {
                  players.forEach(p => {
                     cumulativeScores[p.id] = (cumulativeScores[p.id] || 0) + (game.gameScores[p.id] || 0);
                     dataPoint[p.name] = cumulativeScores[p.id];
@@ -112,13 +188,12 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                     dataPoint[p.name] = game.gameScores[p.id] || 0;
                 });
             }
-            // FIX: Use the correct variable name 'timelineData' instead of 'data'.
-            timelineData.push(dataPoint);
+            categoryTimelineData.push(dataPoint);
         });
 
-        return { leaderboard, timelineData };
+        return { leaderboard, timelineData: categoryTimelineData };
 
-    }, [allGames, selectedCategoryId, players, chartMode]);
+    }, [allGames, selectedCategoryId, players, categoryChartMode]);
 
     if (isLoading) return <LoadingSpinner text="Lade Statistiken..." />;
 
@@ -135,7 +210,10 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                            <PlayerAvatar avatar={p.avatar} size={40} />
                            <span className="font-bold text-lg text-slate-100">{p.name}</span>
                         </div>
-                        <div className="text-2xl font-black text-white">{p.score} <span className="text-sm font-normal text-slate-400">Punkte</span></div>
+                        <div className="text-right flex items-baseline justify-end gap-4">
+                           <div className="text-2xl font-black text-white">{p.sessionsWon} <span className="text-sm font-normal text-slate-400">Siege</span></div>
+                           <div className="text-lg font-semibold text-slate-300">{p.totalScore.toLocaleString('de-DE')} <span className="text-xs font-normal text-slate-400">Pkt.</span></div>
+                        </div>
                     </div>
                 ))}</div>
             </div>
@@ -195,12 +273,25 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                                         <PlayerAvatar avatar={p.avatar} size={32} />
                                         <span className="font-bold text-slate-100">{p.name}</span>
                                     </div>
-                                    <span className="text-xl font-black">{p.score}</span>
+                                    <div className="text-right flex items-baseline justify-end gap-4">
+                                       <span className="text-lg font-bold">{p.gamesWon} Siege</span>
+                                       <span className="text-md font-semibold text-slate-300">{p.score.toLocaleString('de-DE')} <span className="text-xs font-normal text-slate-400">Pkt.</span></span>
+                                    </div>
                                 </div>
                             ))}</div>
                         </div>
                         <div>
-                             <h4 className="font-semibold mb-2">Punkteverlauf: {categories.find(c=>c.id === selectedCategoryId)?.name}</h4>
+                            <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
+                                <h4 className="font-semibold">Punkteverlauf</h4>
+                                <ChartModeToggle
+                                    currentMode={categoryChartMode}
+                                    onChange={(mode) => setCategoryChartMode(mode as 'perGame' | 'cumulative')}
+                                    options={[
+                                        { value: 'perGame', label: 'Pro Spiel' },
+                                        { value: 'cumulative', label: 'Kumulativ' },
+                                    ]}
+                                />
+                            </div>
                             <div className="relative h-80">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={categoryStats.timelineData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>

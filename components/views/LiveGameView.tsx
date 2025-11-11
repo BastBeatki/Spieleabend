@@ -24,19 +24,21 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
     const [chartMode, setChartMode] = useState<'cumulative' | 'perUpdate'>('cumulative');
     const [isBuzzerActive, setIsBuzzerActive] = useState(false);
     
+    // FIX: The method for enriching session players was causing a type error.
+    // When a `sessionPlayer` was inferred as `{}`, spreading it (`...sessionPlayer`)
+    // would result in an object missing required properties like `id`, `name`, and `color`.
+    // This has been fixed by explicitly constructing the player object to ensure all
+    // required properties are always present.
     const enrichedSessionPlayers: SessionPlayer[] = useMemo(() => {
         const globalPlayerMap = new Map(players.map(p => [p.id, p]));
         return session.players.map(sessionPlayer => {
-            // FIX: Explicitly type globalPlayer to help TypeScript's type inference,
-            // which was incorrectly inferring it as 'unknown'.
             const globalPlayer: Player | undefined = globalPlayerMap.get(sessionPlayer.id);
             if (globalPlayer) {
                 return {
-                    ...sessionPlayer,
-                    // Use global player data, with fallback for optional avatar
-                    avatar: globalPlayer.avatar || sessionPlayer.avatar,
+                    id: sessionPlayer.id,
                     name: globalPlayer.name,
                     color: globalPlayer.color,
+                    avatar: globalPlayer.avatar || sessionPlayer.avatar,
                 };
             }
             // If global player not found (e.g., deleted), use session data
@@ -106,16 +108,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
             {isBuzzerActive && <BuzzerView players={enrichedSessionPlayers} onClose={() => setIsBuzzerActive(false)} />}
             <Header title={game.name} onBack={() => navigate('scoreboard', { sessionId: session.id })} backText="Zurück zur Session" />
             
-            <div className="mb-8">
-                <button
-                    onClick={() => setIsBuzzerActive(true)}
-                    className="w-full bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300 shadow-[0_0_15px_rgba(245,158,11,0.4)] hover:shadow-[0_0_25px_rgba(234,88,12,0.6)] flex items-center justify-center gap-2"
-                >
-                    <BuzzerIcon /> Buzzerrunde starten
-                </button>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
                 <div>
                     <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
                         <h3 className="text-xl font-semibold mb-4">Live-Ranking (Dieses Spiel)</h3>
@@ -145,6 +138,9 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                             <button onClick={handleUndo} className="flex-shrink-0 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-amber-400 hover:border-amber-500/50 hover:text-amber-300 font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300" title="Letzte Eingabe rückgängig machen">
                                 <UndoIcon />
                             </button>
+                             <button onClick={() => setIsBuzzerActive(true)} className="flex-shrink-0 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-yellow-500 hover:text-yellow-400 font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300" title="Buzzerrunde starten">
+                                <BuzzerIcon />
+                            </button>
                             <button onClick={handleUpdateScores} className="flex-grow bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300 shadow-[0_0_15px_rgba(99,102,241,0.4)] hover:shadow-[0_0_25px_rgba(124,58,237,0.6)]">
                                 Punkte aktualisieren
                             </button>
@@ -156,7 +152,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                         <h3 className="text-xl font-semibold">Punkteverlauf (Dieses Spiel)</h3>
                         <ChartModeToggle
                             currentMode={chartMode}
-                            onChange={(mode) => setChartMode(mode)}
+                            onChange={(mode) => setChartMode(mode as 'cumulative' | 'perUpdate')}
                             options={[
                                 { value: 'perUpdate', label: 'Pro Update' },
                                 { value: 'cumulative', label: 'Kumulativ' },

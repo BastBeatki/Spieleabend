@@ -69,6 +69,19 @@ const processSessionImage = (file: File): Promise<string> => {
     });
 };
 
+const getGameWinnerIds = (gameScores: { [playerId: string]: number }): string[] => {
+    const scores = Object.entries(gameScores);
+    if (scores.length === 0) return [];
+
+    const maxScore = scores.reduce((max, [, score]) => Math.max(max, Number(score)), -Infinity);
+
+    if (maxScore <= 0) return [];
+
+    return scores
+        .filter(([, score]) => Number(score) === maxScore)
+        .map(([playerId]) => playerId);
+};
+
 
 export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, players, categories, allGameNames, navigate, refreshGameNames }) => {
     const [gameName, setGameName] = useState('');
@@ -81,9 +94,36 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
 
     const enrichedSessionPlayers = useMemo(() => session.players, [session.players]);
 
-    const sortedPlayers = useMemo(() => 
-        [...enrichedSessionPlayers].sort((a, b) => (session.totalScores[b.id] || 0) - (session.totalScores[a.id] || 0)),
-        [session.totalScores, enrichedSessionPlayers]
+    const playerStats = useMemo(() => {
+        const stats: { [playerId: string]: { gamesWon: number } } = {};
+        session.players.forEach(p => {
+            stats[p.id] = { gamesWon: 0 };
+        });
+
+        games.forEach(game => {
+            const winnerIds = getGameWinnerIds(game.gameScores);
+            winnerIds.forEach(winnerId => {
+                if (stats[winnerId]) {
+                    stats[winnerId].gamesWon += 1;
+                }
+            });
+        });
+        return stats;
+    }, [games, session.players]);
+
+    const sortedPlayers = useMemo(() =>
+        [...enrichedSessionPlayers].sort((a, b) => {
+            const statsA = playerStats[a.id];
+            const statsB = playerStats[b.id];
+            const scoreA = session.totalScores[a.id] || 0;
+            const scoreB = session.totalScores[b.id] || 0;
+
+            if (statsB.gamesWon !== statsA.gamesWon) {
+                return statsB.gamesWon - statsA.gamesWon;
+            }
+            return scoreB - scoreA;
+        }),
+        [session.totalScores, enrichedSessionPlayers, playerStats]
     );
 
     const chartData = useMemo(() => {
@@ -113,7 +153,6 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
         games.forEach(game => {
             if(!stats[game.categoryId]) stats[game.categoryId] = { name: game.categoryName, scores: {} };
             Object.entries(game.gameScores).forEach(([pId, score]) => {
-                // FIX: Cast score to number to allow addition, as it might be inferred as 'unknown'.
                 stats[game.categoryId].scores[pId] = (stats[game.categoryId].scores[pId] || 0) + Number(score);
             });
         });
@@ -170,22 +209,22 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
     
     return (
         <>
-            <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8 flex flex-col sm:flex-row items-start gap-6">
-                <div className="w-full sm:w-48 flex-shrink-0">
-                     <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-slate-800 border border-slate-700">
-                         {session.coverImage ? (
-                          <img src={session.coverImage} alt={session.name} className="w-full h-full object-cover"/>
+            <div className="bg-slate-900/70 p-4 sm:p-6 rounded-xl shadow-2xl border border-slate-800 mb-8 flex flex-col md:flex-row items-center gap-6">
+                <div className="w-full md:w-48 flex-shrink-0">
+                    <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-slate-800 border border-slate-700">
+                        {session.coverImage ? (
+                            <img src={session.coverImage} alt={session.name} className="w-full h-full object-cover"/>
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-slate-600">
-                            <UserIcon size={48} />
-                          </div>
+                            <div className="w-full h-full flex items-center justify-center text-slate-600">
+                                <UserIcon size={48} />
+                            </div>
                         )}
                     </div>
                 </div>
-                <div className="flex-grow w-full">
-                    <div className="flex justify-between items-start gap-4">
-                        <h2 className="text-3xl font-extrabold text-slate-100 flex-grow">{session.name}</h2>
-                        <div className="flex-shrink-0 flex items-center gap-2">
+                <div className="flex-grow w-full text-center md:text-left">
+                    <div className="flex flex-col md:flex-row justify-between md:items-start gap-2">
+                        <h2 className="text-3xl font-extrabold text-slate-100 flex-grow leading-tight">{session.name}</h2>
+                        <div className="flex-shrink-0 flex items-center justify-center gap-2">
                             <button onClick={() => setEditModalOpen(true)} className="p-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 rounded-lg transition duration-300">
                                 <EditIcon />
                             </button>
@@ -196,7 +235,6 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                 </div>
             </div>
 
-
             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
                 <h3 className="text-xl font-semibold mb-4">Session-Ranking</h3>
                 <div className="space-y-3">{sortedPlayers.map((p, i) => (
@@ -206,7 +244,10 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                            <PlayerAvatar avatar={p.avatar} size={40} />
                            <span className="font-bold text-lg text-slate-100">{p.name}</span>
                         </div>
-                        <div className="text-2xl font-black text-white">{session.totalScores[p.id] || 0} <span className="text-sm font-normal text-slate-400">Punkte</span></div>
+                        <div className="text-right flex items-baseline justify-end gap-4">
+                           <div className="text-xl font-black text-white">{playerStats[p.id]?.gamesWon || 0} <span className="text-sm font-normal text-slate-400">Siege</span></div>
+                           <div className="text-lg font-semibold text-slate-300">{(session.totalScores[p.id] || 0).toLocaleString('de-DE')} <span className="text-xs font-normal text-slate-400">Pkt.</span></div>
+                        </div>
                     </div>
                 ))}</div>
                 {availablePlayersToAdd.length > 0 && (
@@ -239,7 +280,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                         <h3 className="text-xl font-semibold">Punkteverlauf (Session)</h3>
                          <ChartModeToggle
                             currentMode={chartMode}
-                            onChange={(mode) => setChartMode(mode)}
+                            onChange={(mode) => setChartMode(mode as 'cumulative' | 'perGame')}
                             options={[
                                 { value: 'perGame', label: 'Pro Spiel' },
                                 { value: 'cumulative', label: 'Kumulativ' },
@@ -279,7 +320,6 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                     <div className="space-y-4 max-h-80 overflow-y-auto pr-2">{categoryStats.map(cat => (
                         <div key={cat.name} className="bg-slate-800/80 p-3 rounded-lg">
                             <h4 className="font-semibold mb-2">{cat.name}</h4>
-                            {/* FIX: Cast score values to number for sorting, as they might be inferred as 'unknown'. */}
                             <div className="space-y-1">{Object.entries(cat.scores).sort(([,a],[,b]) => Number(b) - Number(a)).map(([pId, score]) => {
                                 const player = enrichedSessionPlayers.find(p => p.id === pId);
                                 return player ? <div key={pId} className="flex justify-between text-sm"><span style={{color: player.color}}>{player.name}</span><span className="font-bold">{score} Pkt</span></div> : null;
@@ -294,16 +334,16 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                     <div key={g.id} className="group bg-slate-800/80 p-4 rounded-lg transition-all duration-300 border border-transparent hover:border-blue-500/30">
                          <div className="flex justify-between items-center cursor-pointer" onClick={() => navigate('liveGame', { sessionId: session.id, gameId: g.id })}>
                             <h4 className="font-semibold text-lg">{g.gameNumber}. {g.name} <span className="text-xs text-slate-400 font-normal ml-2">{g.categoryName}</span></h4>
-                            {/* FIX: Cast score value to number for reduce operation, as it might be inferred as 'unknown'. */}
-                            <span className="text-lg font-bold">{Object.values(g.gameScores).reduce((a, b) => a + Number(b), 0)} Pkt</span>
+                            {/* FIX: The error message's line number for the '+' operator error was likely incorrect.
+                                This `reduce` is the most probable source. Added explicit types to the callback 
+                                parameters to prevent type inference issues. */}
+                            <span className="text-lg font-bold">{Object.values(g.gameScores).reduce((a: number, b: number) => a + b, 0)} Pkt</span>
                         </div>
                         <div className="flex justify-between items-center mt-2">
                             <div className="text-sm text-blue-400">🏆 {
-                                Object.entries(g.gameScores)
-                                // FIX: Cast score values to number for sorting and filtering, as they might be inferred as 'unknown'.
-                                .sort(([,a],[,b]) => Number(b) - Number(a))
-                                .filter(([,score],_,arr) => Number(score) > 0 && score === arr[0][1])
-                                .map(([pId])=>enrichedSessionPlayers.find(p=>p.id===pId)?.name).join(', ')
+                                getGameWinnerIds(g.gameScores)
+                                .map(pId => enrichedSessionPlayers.find(p => p.id === pId)?.name)
+                                .join(', ') || 'Niemand'
                             }</div>
                              <button onClick={() => handleDeleteGame(g.id, g.name)} className="delete-btn opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 p-1"><TrashIcon size={20} /></button>
                         </div>
