@@ -4,19 +4,19 @@ export const mockBackupData = {
       "name": "BastBeat",
       "color": "#3b82f6",
       "_id": "player_bastbeat_id",
-      "localAvatar": "player_bastbeat_id.jpg"
+      "localAvatar": "player_bastbeat_id.png"
     },
     {
       "color": "#ef4444",
       "name": "Schütti",
       "_id": "player_schuetti_id",
-      "localAvatar": "player_schuetti_id.jpg"
+      "localAvatar": "player_schuetti_id.png"
     },
     {
       "name": "Schum",
       "color": "#be38f3",
       "_id": "xJcstcD1MkC8VOjeAl3Y",
-      "localAvatar": "xJcstcD1MkC8VOjeAl3Y.jpg"
+      "localAvatar": "xJcstcD1MkC8VOjeAl3Y.JPEG"
     }
   ],
   "categories": [

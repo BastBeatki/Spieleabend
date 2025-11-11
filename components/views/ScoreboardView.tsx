@@ -327,9 +327,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                     <div key={g.id} className="group bg-slate-800/80 p-4 rounded-lg transition-all duration-300 border border-transparent hover:border-blue-500/30">
                          <div className="flex justify-between items-center cursor-pointer" onClick={() => navigate('liveGame', { sessionId: session.id, gameId: g.id })}>
                             <h4 className="font-semibold text-lg">{g.gameNumber}. {g.name} <span className="text-xs text-slate-400 font-normal ml-2">{g.categoryName}</span></h4>
-                            {/* FIX: The error message's line number for the '+' operator error was likely incorrect.
-                                This `reduce` is the most probable source. Added explicit types to the callback 
-                                parameters to prevent type inference issues. */}
+                            {/* FIX: Added explicit types to the `reduce` callback parameters to prevent potential type inference issues. */}
                             <span className="text-lg font-bold">{Object.values(g.gameScores).reduce((a: number, b: number) => a + b, 0)} Pkt</span>
                         </div>
                         <div className="flex justify-between items-center mt-2">
