@@ -1,11 +1,10 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Session, Game, Player, Category, View, SessionPlayer } from '../../types';
 import * as fb from '../../services/firebaseService';
 import { Header } from '../ui/Header';
 import { Modal } from '../ui/Modal';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Area } from 'recharts';
-import { TrashIcon, PlayerAvatar } from '../ui/Icons';
+import { TrashIcon, PlayerAvatar, EditIcon, UserIcon, CancelIcon, SaveIcon } from '../ui/Icons';
 import { ChartModeToggle, CustomChartTooltip } from '../ui/ChartModeToggle';
 
 declare const Recharts: any;
@@ -36,26 +35,51 @@ const getRankText = (rank: number) => {
     }
 }
 
+const processSessionImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 480;
+                let { width, height } = img;
+
+                if (width > MAX_WIDTH) {
+                    height *= MAX_WIDTH / width;
+                    width = MAX_WIDTH;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return reject('Could not get canvas context');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.onerror = reject;
+            if (event.target?.result) {
+                img.src = event.target.result as string;
+            } else {
+                reject('Could not read image file.');
+            }
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
+
 export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, players, categories, allGameNames, navigate, refreshGameNames }) => {
     const [gameName, setGameName] = useState('');
     const [categoryId, setCategoryId] = useState('');
     const [newCategoryName, setNewCategoryName] = useState('');
     const [isPlayerModalOpen, setPlayerModalOpen] = useState(false);
+    const [isEditModalOpen, setEditModalOpen] = useState(false);
     const [chartMode, setChartMode] = useState<'cumulative' | 'perGame'>('cumulative');
     const [modal, setModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm?: (confirmed: boolean) => void }>({ isOpen: false, title: '', message: '' });
 
-    const enrichedSessionPlayers = useMemo(() => {
-        const globalPlayerMap = new Map(players.map(p => [p.id, p]));
-        return session.players.map(sessionPlayer => {
-            const globalPlayer = globalPlayerMap.get(sessionPlayer.id);
-            return {
-                ...sessionPlayer,
-                avatar: globalPlayer?.avatar,
-                name: globalPlayer?.name || sessionPlayer.name,
-                color: globalPlayer?.color || sessionPlayer.color,
-            };
-        });
-    }, [session.players, players]);
+    const enrichedSessionPlayers = useMemo(() => session.players, [session.players]);
 
     const sortedPlayers = useMemo(() => 
         [...enrichedSessionPlayers].sort((a, b) => (session.totalScores[b.id] || 0) - (session.totalScores[a.id] || 0)),
@@ -145,7 +169,23 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
     
     return (
         <>
-            <Header title={session.name} onBack={() => navigate('home')} backText="Zurück zur Übersicht" />
+            <div className="flex justify-between items-start">
+                 <Header title={session.name} onBack={() => navigate('home')} backText="Zurück zur Übersicht" />
+                 <button onClick={() => setEditModalOpen(true)} className="mt-2 ml-4 p-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 rounded-lg transition duration-300">
+                    <EditIcon />
+                 </button>
+            </div>
+            
+            <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-slate-800 border border-slate-700 mb-8">
+                 {session.coverImage ? (
+                  <img src={session.coverImage} alt={session.name} className="w-full h-full object-cover"/>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-600 bg-grid-slate-700/[0.05]">
+                    <UserIcon size={64} />
+                  </div>
+                )}
+            </div>
+
 
             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
                 <h3 className="text-xl font-semibold mb-4">Session-Ranking</h3>
@@ -264,6 +304,11 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                 onSave={handleSaveSessionPlayers} 
                 availablePlayers={availablePlayersToAdd}
             />
+            <EditSessionModal 
+                isOpen={isEditModalOpen}
+                onClose={() => setEditModalOpen(false)}
+                session={session}
+            />
             <Modal
                 isOpen={modal.isOpen}
                 title={modal.title}
@@ -306,4 +351,75 @@ const ManageSessionPlayersModal: React.FC<{isOpen: boolean, onClose: () => void,
              </div>
         </Modal>
     );
+}
+
+const EditSessionModal: React.FC<{isOpen: boolean, onClose: () => void, session: Session}> = ({isOpen, onClose, session}) => {
+    const [name, setName] = useState(session.name);
+    const [coverImage, setCoverImage] = useState(session.coverImage);
+    const [error, setError] = useState('');
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            setName(session.name);
+            setCoverImage(session.coverImage);
+            setError('');
+        }
+    }, [isOpen, session]);
+
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                setError('Bild zu groß (max. 2MB).');
+                return;
+            }
+            try {
+                const base64 = await processSessionImage(file);
+                setCoverImage(base64);
+                setError('');
+            } catch (error) {
+                setError('Bild konnte nicht verarbeitet werden.');
+            }
+        }
+    };
+    
+    const handleSave = async () => {
+        if(!name.trim()) {
+            setError('Der Session-Name darf nicht leer sein.');
+            return;
+        }
+        await fb.updateDocument('sessions', session.id, { name, coverImage });
+        onClose();
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Session bearbeiten" buttons={[
+            {text: 'Abbrechen', onClick: onClose, className: 'bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-2 px-5 rounded-lg'},
+            {text: 'Speichern', onClick: handleSave, className: 'bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-5 rounded-lg'}
+        ]}>
+            <div className="space-y-4 text-left">
+                {error && <p className="text-red-400 text-center pb-2">{error}</p>}
+                <div>
+                    <label htmlFor="sessionNameEdit" className="block text-sm font-medium mb-1">Session-Name</label>
+                    <input type="text" id="sessionNameEdit" value={name} onChange={e => setName(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:border-blue-500" />
+                </div>
+                <div>
+                     <label className="block text-sm font-medium mb-1">Titelbild</label>
+                     <div className="aspect-video bg-slate-800 rounded-lg flex items-center justify-center overflow-hidden relative group">
+                        {coverImage ? (
+                            <img src={coverImage} alt="Session Vorschau" className="w-full h-full object-cover"/>
+                        ) : (
+                            <div className="text-slate-500">Kein Bild</div>
+                        )}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-4 transition-opacity">
+                            <button onClick={() => fileInputRef.current?.click()} className="text-white hover:text-blue-400">Ändern</button>
+                            {coverImage && <button onClick={() => setCoverImage('')} className="text-white hover:text-red-400">Entfernen</button>}
+                        </div>
+                    </div>
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg" />
+                </div>
+            </div>
+        </Modal>
+    )
 }

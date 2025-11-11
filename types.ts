@@ -30,6 +30,7 @@ export interface Session {
     createdAt: Timestamp;
     players: SessionPlayer[];
     totalScores: { [playerId: string]: number };
+    coverImage?: string;
 }
 
 export interface Game {
@@ -87,6 +88,7 @@ interface SessionDoc extends BaseDoc {
     players: SessionPlayer[];
     totalScores: { [playerId: string]: number };
     games: GameDoc[];
+    coverImage?: string;
 }
 
 export interface FullBackup {

@@ -24,9 +24,25 @@ class MockTimestamp implements ITimestamp {
     toMillis = () => this.date.getTime();
 }
 
+const enrichSessionPlayers = (session: Session | Omit<Session, 'id'>) => {
+    const playerMap = new Map(dbState.players.map(p => [p.id, p]));
+    session.players.forEach(sp => {
+        const globalPlayer = playerMap.get(sp.id);
+        if (globalPlayer) {
+            sp.name = globalPlayer.name;
+            sp.color = globalPlayer.color;
+            sp.avatar = globalPlayer.avatar;
+        }
+    });
+};
+
+
 const initializeMockData = () => {
+    // 1. Load players and categories first.
     dbState.players = mockBackupData.players.map(p => ({ ...p, id: p._id }));
     dbState.categories = mockBackupData.categories.map(c => ({ ...c, id: c._id }));
+
+    // 2. Load sessions and enrich player data within them.
     dbState.sessions = mockBackupData.sessions.map(s => {
         const games = s.games.map(g => ({
             ...g,
@@ -38,14 +54,20 @@ const initializeMockData = () => {
                 createdAt: MockTimestamp.fromDate(new Date(pu.createdAt))
             }))
         }));
-        return {
+        
+        const sessionWithGames = {
             ...s,
             id: s._id,
             createdAt: MockTimestamp.fromDate(new Date(s.createdAt)),
             games,
         };
+        
+        enrichSessionPlayers(sessionWithGames);
+
+        return sessionWithGames;
     });
 };
+
 
 const notify = (path: string) => {
     const cbs = listeners.get(path);
@@ -185,7 +207,18 @@ export const updateDocument = async (collectionName: string, docId: string, data
     const docIndex = collection.findIndex((d: any) => d.id === docId);
     if (docIndex > -1) {
         collection[docIndex] = { ...collection[docIndex], ...data };
-        notify(collectionName);
+        
+        // If a player is updated, we need to enrich all sessions again.
+        if (collectionName === 'players') {
+            dbState.sessions.forEach(enrichSessionPlayers);
+            notify('sessions');
+            dbState.sessions.forEach(s => notify(`sessions/${s.id}`));
+        } else {
+            notify(collectionName);
+             if (collectionName === 'sessions') {
+                notify(`sessions/${docId}`);
+            }
+        }
     }
 };
 
@@ -198,7 +231,7 @@ export const deleteDocument = async (collectionName: string, docId: string) => {
     }
 };
 
-export const startSession = async (sessionName: string, selectedPlayers: Player[]) => {
+export const startSession = async (sessionName: string, selectedPlayers: Player[], coverImage?: string) => {
     const totalScores = selectedPlayers.reduce((acc, p) => ({ ...acc, [p.id]: 0 }), {});
     const sessionPlayers: SessionPlayer[] = selectedPlayers.map(({ id, name, color, avatar }) => ({ id, name, color, avatar }));
     
@@ -208,7 +241,8 @@ export const startSession = async (sessionName: string, selectedPlayers: Player[
         players: sessionPlayers,
         totalScores,
         createdAt: MockTimestamp.now(),
-        games: []
+        games: [],
+        coverImage,
     };
     dbState.sessions.push(newSession);
     notify('sessions');
@@ -352,6 +386,7 @@ export const exportData = async (): Promise<FullBackup> => {
             createdAt: s.createdAt.toDate().toISOString(),
             players: s.players,
             totalScores: s.totalScores,
+            coverImage: s.coverImage,
             games: s.games.map(g => ({
                 _id: g.id,
                 name: g.name,
@@ -385,12 +420,14 @@ export const importData = async (data: FullBackup) => {
                 createdAt: MockTimestamp.fromDate(new Date(pu.createdAt))
             }))
         }));
-        return {
+         const sessionWithGames = {
             ...s,
             id: s._id,
             createdAt: MockTimestamp.fromDate(new Date(s.createdAt)),
             games,
         };
+        enrichSessionPlayers(sessionWithGames);
+        return sessionWithGames;
     });
 
     // Notify all top-level listeners to refresh views

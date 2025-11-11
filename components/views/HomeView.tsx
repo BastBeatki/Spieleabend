@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Session, View, FullBackup } from '../../types';
 import * as fb from '../../services/firebaseService';
 import { Modal } from '../ui/Modal';
-import { ExportIcon, ImportIcon, TrashIcon } from '../ui/Icons';
+import { ExportIcon, ImportIcon, TrashIcon, UserIcon } from '../ui/Icons';
 
 interface HomeViewProps {
   sessions: Session[];
@@ -136,21 +136,44 @@ export const HomeView: React.FC<HomeViewProps> = ({ sessions, navigate, setView 
       </div>
       <div>
         <h2 className="text-2xl font-semibold border-b-2 border-slate-700 pb-2 mb-4">Vergangene Sessions</h2>
-        <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {sessions.length > 0 ? sessions.map(s => (
-            <div key={s.id} className="group bg-slate-900/70 p-4 rounded-xl flex justify-between items-center transition-all duration-300 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-800/50">
-              <div className="cursor-pointer flex-grow" onClick={() => navigate('scoreboard', { sessionId: s.id })}>
-                <h3 className="font-bold text-lg">{s.name}</h3>
-                <p className="text-sm text-slate-400">{s.createdAt.toDate().toLocaleDateString('de-DE')}</p>
-              </div>
-              <button
-                className="delete-btn opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 p-2 transition-opacity"
-                onClick={(e) => { e.stopPropagation(); handleDeleteSession(s.id, s.name); }}
+            <div key={s.id} className="group bg-slate-900/70 rounded-xl overflow-hidden transition-all duration-300 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-800/50 flex flex-col">
+              <div 
+                className="relative aspect-video bg-slate-800 cursor-pointer"
+                onClick={() => navigate('scoreboard', { sessionId: s.id })}
               >
-                <TrashIcon />
-              </button>
+                {s.coverImage ? (
+                  <img src={s.coverImage} alt={s.name} className="w-full h-full object-cover"/>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-600">
+                    <UserIcon size={48} />
+                  </div>
+                )}
+                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent group-hover:from-black/70 transition-all"></div>
+              </div>
+
+              <div className="p-4 flex-grow flex flex-col justify-between">
+                <div>
+                   <h3 
+                    className="font-bold text-lg text-slate-100 cursor-pointer" 
+                    onClick={() => navigate('scoreboard', { sessionId: s.id })}
+                   >
+                    {s.name}
+                   </h3>
+                   <p className="text-sm text-slate-400">{s.createdAt.toDate().toLocaleDateString('de-DE')}</p>
+                </div>
+                <div className="flex justify-end items-center mt-2">
+                    <button
+                        className="delete-btn opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 p-2 transition-opacity"
+                        onClick={(e) => { e.stopPropagation(); handleDeleteSession(s.id, s.name); }}
+                    >
+                        <TrashIcon />
+                    </button>
+                </div>
+              </div>
             </div>
-          )) : <p className="text-slate-500">Noch keine Sessions gespielt.</p>}
+          )) : <p className="text-slate-500 md:col-span-3">Noch keine Sessions gespielt.</p>}
         </div>
       </div>
         <Modal
