@@ -193,8 +193,8 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ players,
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-3">
-                                    <PlayerAvatar avatar={p.avatar} size={40} />
+                                <div className="flex items-center gap-4">
+                                    <PlayerAvatar avatar={p.avatar} size={48} />
                                     <span className="font-bold text-lg" style={{color: p.color}}>{p.name}</span>
                                 </div>
                             )}

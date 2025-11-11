@@ -217,8 +217,8 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
                                     onChange={() => handlePlayerSelection(p.id)}
                                     className="h-6 w-6 rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900"
                                 />
-                                <div className="ml-4 flex items-center gap-3">
-                                   <PlayerAvatar avatar={p.avatar} size={32} />
+                                <div className="ml-4 flex items-center gap-4">
+                                   <PlayerAvatar avatar={p.avatar} size={40} />
                                    <span className="text-lg" style={{ color: p.color }}>{p.name}</span>
                                 </div>
                             </label>

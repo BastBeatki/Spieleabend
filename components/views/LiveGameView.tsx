@@ -24,13 +24,13 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
     const [chartMode, setChartMode] = useState<'cumulative' | 'perUpdate'>('cumulative');
     const [isBuzzerActive, setIsBuzzerActive] = useState(false);
     
-    // FIX: The method for enriching session players was causing a type error.
-    // When a `sessionPlayer` was inferred as `{}`, spreading it (`...sessionPlayer`)
-    // would result in an object missing required properties like `id`, `name`, and `color`.
-    // This has been fixed by explicitly constructing the player object to ensure all
-    // required properties are always present.
     const enrichedSessionPlayers: SessionPlayer[] = useMemo(() => {
         const globalPlayerMap = new Map(players.map(p => [p.id, p]));
+        // FIX: The method for enriching session players was causing a type error.
+        // When a `sessionPlayer`'s type was not strictly enforced, it could be inferred as `{}`,
+        // causing issues when accessing its properties. This has been fixed by explicitly 
+        // constructing the player object in all branches to ensure all required properties 
+        // are always present and correctly typed.
         return session.players.map(sessionPlayer => {
             const globalPlayer: Player | undefined = globalPlayerMap.get(sessionPlayer.id);
             if (globalPlayer) {
@@ -41,8 +41,14 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                     avatar: globalPlayer.avatar || sessionPlayer.avatar,
                 };
             }
-            // If global player not found (e.g., deleted), use session data
-            return sessionPlayer;
+            // If global player not found (e.g., deleted), use session data,
+            // but reconstruct it to ensure a clean object conforming to SessionPlayer.
+            return {
+                id: sessionPlayer.id,
+                name: sessionPlayer.name,
+                color: sessionPlayer.color,
+                avatar: sessionPlayer.avatar,
+            };
         });
     }, [session.players, players]);
 
@@ -114,8 +120,8 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                         <h3 className="text-xl font-semibold mb-4">Live-Ranking (Dieses Spiel)</h3>
                         <div className="space-y-3">{sortedPlayers.map(p => (
                             <div key={p.id} className="flex items-center justify-between bg-slate-800/80 p-3 rounded-lg">
-                                <div className="flex items-center gap-3">
-                                     <PlayerAvatar avatar={p.avatar} size={32} />
+                                <div className="flex items-center gap-4">
+                                     <PlayerAvatar avatar={p.avatar} size={40} />
                                     <span className="font-bold text-slate-100">{p.name}</span>
                                 </div>
                                 <span className="text-xl font-black">{game.gameScores[p.id] || 0}</span>

@@ -209,39 +209,44 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
     
     return (
         <>
-            <div className="bg-slate-900/70 p-4 sm:p-6 rounded-xl shadow-2xl border border-slate-800 mb-8 flex flex-col md:flex-row items-center gap-6">
-                <div className="w-full md:w-48 flex-shrink-0">
-                    <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-slate-800 border border-slate-700">
+            <div className="flex justify-between items-center mb-8 gap-4">
+                <BackButton onClick={() => navigate('home')}>Zurück</BackButton>
+
+                <div className="flex items-center gap-4 flex-grow justify-center min-w-0">
+                    <div className="w-24 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-slate-800 border border-slate-700 hidden sm:block">
                         {session.coverImage ? (
                             <img src={session.coverImage} alt={session.name} className="w-full h-full object-cover"/>
                         ) : (
                             <div className="w-full h-full flex items-center justify-center text-slate-600">
-                                <UserIcon size={48} />
+                                <UserIcon size={32} />
                             </div>
                         )}
                     </div>
-                </div>
-                <div className="flex-grow w-full text-center md:text-left">
-                    <div className="flex flex-col md:flex-row justify-between md:items-start gap-2">
-                        <h2 className="text-3xl font-extrabold text-slate-100 flex-grow leading-tight">{session.name}</h2>
-                        <div className="flex-shrink-0 flex items-center justify-center gap-2">
-                            <button onClick={() => setEditModalOpen(true)} className="p-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 rounded-lg transition duration-300">
-                                <EditIcon />
-                            </button>
-                        </div>
+                    <div className="text-center sm:text-left min-w-0">
+                        <h2 className="text-2xl md:text-3xl font-extrabold text-slate-100 truncate" title={session.name}>{session.name}</h2>
+                        <p className="text-slate-400 text-sm">
+                            {session.createdAt.toDate().toLocaleDateString('de-DE')}
+                        </p>
                     </div>
-                    <p className="text-slate-400 mt-1 mb-4">Session vom {session.createdAt.toDate().toLocaleDateString('de-DE')}</p>
-                    <BackButton onClick={() => navigate('home')}>Zurück zur Übersicht</BackButton>
                 </div>
+                
+                <button 
+                    onClick={() => setEditModalOpen(true)} 
+                    className="flex-shrink-0 flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-200 font-semibold py-2 px-4 rounded-lg transition duration-300"
+                >
+                    <EditIcon />
+                    <span className="hidden md:inline">Bearbeiten</span>
+                </button>
             </div>
+
 
             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
                 <h3 className="text-xl font-semibold mb-4">Session-Ranking</h3>
                 <div className="space-y-3">{sortedPlayers.map((p, i) => (
                      <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg shadow-md">
                         <div className="w-10 text-center font-bold"><span className={`w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br ${getRankBadge(i+1)} ${getRankText(i+1)}`}>{i+1}</span></div>
-                        <div className="flex-grow flex items-center gap-3 ml-3">
-                           <PlayerAvatar avatar={p.avatar} size={40} />
+                        <div className="flex-grow flex items-center gap-4 ml-3">
+                           <PlayerAvatar avatar={p.avatar} size={48} />
                            <span className="font-bold text-lg text-slate-100">{p.name}</span>
                         </div>
                         <div className="text-right flex items-baseline justify-end gap-4">
@@ -395,8 +400,8 @@ const ManageSessionPlayersModal: React.FC<{isOpen: boolean, onClose: () => void,
                 {availablePlayers.length > 0 ? availablePlayers.map(p => (
                      <label key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg cursor-pointer hover:bg-slate-700/80 transition">
                         <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => togglePlayer(p.id)} className="h-6 w-6 rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900" />
-                        <div className="ml-4 flex items-center gap-3">
-                            <PlayerAvatar avatar={p.avatar} size={32} />
+                        <div className="ml-4 flex items-center gap-4">
+                            <PlayerAvatar avatar={p.avatar} size={40} />
                             <span className="text-lg" style={{ color: p.color }}>{p.name}</span>
                         </div>
                     </label>
