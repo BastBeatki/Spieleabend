@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Session, Game, Player, Category, View, SessionPlayer } from '../../types';
 import * as fb from '../../services/firebaseService';
-import { Header } from '../ui/Header';
 import { Modal } from '../ui/Modal';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Area } from 'recharts';
 import { TrashIcon, PlayerAvatar, EditIcon, UserIcon, CancelIcon, SaveIcon } from '../ui/Icons';
 import { ChartModeToggle, CustomChartTooltip } from '../ui/ChartModeToggle';
+import { BackButton } from '../ui/BackButton';
 
 declare const Recharts: any;
 
@@ -113,8 +113,8 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
         games.forEach(game => {
             if(!stats[game.categoryId]) stats[game.categoryId] = { name: game.categoryName, scores: {} };
             Object.entries(game.gameScores).forEach(([pId, score]) => {
-                // FIX: Cast score to number to allow addition.
-                stats[game.categoryId].scores[pId] = (stats[game.categoryId].scores[pId] || 0) + (score as number);
+                // FIX: Cast score to number to allow addition, as it might be inferred as 'unknown'.
+                stats[game.categoryId].scores[pId] = (stats[game.categoryId].scores[pId] || 0) + Number(score);
             });
         });
         return Object.values(stats);
@@ -170,21 +170,30 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
     
     return (
         <>
-            <div className="flex justify-between items-start">
-                 <Header title={session.name} onBack={() => navigate('home')} backText="Zurück zur Übersicht" />
-                 <button onClick={() => setEditModalOpen(true)} className="mt-2 ml-4 p-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 rounded-lg transition duration-300">
-                    <EditIcon />
-                 </button>
-            </div>
-            
-            <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-slate-800 border border-slate-700 mb-8">
-                 {session.coverImage ? (
-                  <img src={session.coverImage} alt={session.name} className="w-full h-full object-cover"/>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-600 bg-grid-slate-700/[0.05]">
-                    <UserIcon size={64} />
-                  </div>
-                )}
+            <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8 flex flex-col sm:flex-row items-start gap-6">
+                <div className="w-full sm:w-48 flex-shrink-0">
+                     <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-slate-800 border border-slate-700">
+                         {session.coverImage ? (
+                          <img src={session.coverImage} alt={session.name} className="w-full h-full object-cover"/>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-600">
+                            <UserIcon size={48} />
+                          </div>
+                        )}
+                    </div>
+                </div>
+                <div className="flex-grow w-full">
+                    <div className="flex justify-between items-start gap-4">
+                        <h2 className="text-3xl font-extrabold text-slate-100 flex-grow">{session.name}</h2>
+                        <div className="flex-shrink-0 flex items-center gap-2">
+                            <button onClick={() => setEditModalOpen(true)} className="p-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 rounded-lg transition duration-300">
+                                <EditIcon />
+                            </button>
+                        </div>
+                    </div>
+                    <p className="text-slate-400 mt-1 mb-4">Session vom {session.createdAt.toDate().toLocaleDateString('de-DE')}</p>
+                    <BackButton onClick={() => navigate('home')}>Zurück zur Übersicht</BackButton>
+                </div>
             </div>
 
 
@@ -270,8 +279,8 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                     <div className="space-y-4 max-h-80 overflow-y-auto pr-2">{categoryStats.map(cat => (
                         <div key={cat.name} className="bg-slate-800/80 p-3 rounded-lg">
                             <h4 className="font-semibold mb-2">{cat.name}</h4>
-                            {/* FIX: Cast score values to number for sorting. */}
-                            <div className="space-y-1">{Object.entries(cat.scores).sort(([,a],[,b]) => (b as number) - (a as number)).map(([pId, score]) => {
+                            {/* FIX: Cast score values to number for sorting, as they might be inferred as 'unknown'. */}
+                            <div className="space-y-1">{Object.entries(cat.scores).sort(([,a],[,b]) => Number(b) - Number(a)).map(([pId, score]) => {
                                 const player = enrichedSessionPlayers.find(p => p.id === pId);
                                 return player ? <div key={pId} className="flex justify-between text-sm"><span style={{color: player.color}}>{player.name}</span><span className="font-bold">{score} Pkt</span></div> : null;
                             })}</div>
@@ -285,15 +294,15 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                     <div key={g.id} className="group bg-slate-800/80 p-4 rounded-lg transition-all duration-300 border border-transparent hover:border-blue-500/30">
                          <div className="flex justify-between items-center cursor-pointer" onClick={() => navigate('liveGame', { sessionId: session.id, gameId: g.id })}>
                             <h4 className="font-semibold text-lg">{g.gameNumber}. {g.name} <span className="text-xs text-slate-400 font-normal ml-2">{g.categoryName}</span></h4>
-                            {/* FIX: Cast score value to number for reduce operation. */}
-                            <span className="text-lg font-bold">{Object.values(g.gameScores).reduce((a, b) => a + (b as number), 0)} Pkt</span>
+                            {/* FIX: Cast score value to number for reduce operation, as it might be inferred as 'unknown'. */}
+                            <span className="text-lg font-bold">{Object.values(g.gameScores).reduce((a, b) => a + Number(b), 0)} Pkt</span>
                         </div>
                         <div className="flex justify-between items-center mt-2">
                             <div className="text-sm text-blue-400">🏆 {
                                 Object.entries(g.gameScores)
-                                // FIX: Cast score values to number for sorting and filtering.
-                                .sort(([,a],[,b]) => (b as number) - (a as number))
-                                .filter(([,score],_,arr) => (score as number) > 0 && score === arr[0][1])
+                                // FIX: Cast score values to number for sorting and filtering, as they might be inferred as 'unknown'.
+                                .sort(([,a],[,b]) => Number(b) - Number(a))
+                                .filter(([,score],_,arr) => Number(score) > 0 && score === arr[0][1])
                                 .map(([pId])=>enrichedSessionPlayers.find(p=>p.id===pId)?.name).join(', ')
                             }</div>
                              <button onClick={() => handleDeleteGame(g.id, g.name)} className="delete-btn opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 p-1"><TrashIcon size={20} /></button>

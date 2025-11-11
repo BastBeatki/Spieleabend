@@ -26,9 +26,10 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
     
     const enrichedSessionPlayers: SessionPlayer[] = useMemo(() => {
         const globalPlayerMap = new Map(players.map(p => [p.id, p]));
-        // FIX: Rewrite with a type guard to help TypeScript's type inference.
         return session.players.map(sessionPlayer => {
-            const globalPlayer = globalPlayerMap.get(sessionPlayer.id);
+            // FIX: Explicitly type globalPlayer to help TypeScript's type inference,
+            // which was incorrectly inferring it as 'unknown'.
+            const globalPlayer: Player | undefined = globalPlayerMap.get(sessionPlayer.id);
             if (globalPlayer) {
                 return {
                     ...sessionPlayer,
@@ -141,7 +142,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                             </div>
                         ))}</div>
                         <div className="flex gap-4">
-                            <button onClick={handleUndo} className="flex-shrink-0 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-3 px-5 rounded-lg text-lg transition duration-300" title="Letzte Eingabe rückgängig machen">
+                            <button onClick={handleUndo} className="flex-shrink-0 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-amber-400 hover:border-amber-500/50 hover:text-amber-300 font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300" title="Letzte Eingabe rückgängig machen">
                                 <UndoIcon />
                             </button>
                             <button onClick={handleUpdateScores} className="flex-grow bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-5 rounded-lg text-lg transition-all duration-300 shadow-[0_0_15px_rgba(99,102,241,0.4)] hover:shadow-[0_0_25px_rgba(124,58,237,0.6)]">
