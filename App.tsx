@@ -122,6 +122,7 @@ const App: React.FC = () => {
                     session={activeSession}
                     game={activeGame}
                     updates={activeGameUpdates}
+                    players={players}
                     navigate={navigate}
                 />
             default:

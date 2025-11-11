@@ -1,13 +1,56 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Player, View } from '../../types';
 import * as fb from '../../services/firebaseService';
 import { Header } from '../ui/Header';
 import { Modal } from '../ui/Modal';
+import { PlayerAvatar } from '../ui/Icons';
 
 interface SessionSetupViewProps {
   players: Player[];
   navigate: (view: View, data?: any) => void;
 }
+
+// Helper function to process and resize images
+const processImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_SIZE = 128;
+                let { width, height } = img;
+
+                if (width > height) {
+                    if (width > MAX_SIZE) {
+                        height *= MAX_SIZE / width;
+                        width = MAX_SIZE;
+                    }
+                } else {
+                    if (height > MAX_SIZE) {
+                        width *= MAX_SIZE / height;
+                        height = MAX_SIZE;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return reject('Could not get canvas context');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.8)); // Use jpeg for smaller size
+            };
+            img.onerror = reject;
+            if (event.target?.result) {
+                img.src = event.target.result as string;
+            } else {
+                reject('Could not read image file.');
+            }
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
 
 export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, navigate }) => {
     const [sessionName, setSessionName] = useState('');
@@ -15,7 +58,9 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
     const [isPlayerModalOpen, setPlayerModalOpen] = useState(false);
     const [newPlayerName, setNewPlayerName] = useState('');
     const [newPlayerColor, setNewPlayerColor] = useState('#3b82f6');
+    const [newPlayerAvatar, setNewPlayerAvatar] = useState<string | undefined>();
     const [error, setError] = useState('');
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const isStartDisabled = useMemo(() => {
         return !sessionName.trim() || selectedPlayerIds.size < 2;
@@ -49,12 +94,30 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
             return;
         }
         try {
-            await fb.addDocument('players', { name: newPlayerName, color: newPlayerColor });
+            await fb.addDocument('players', { name: newPlayerName, color: newPlayerColor, avatar: newPlayerAvatar });
             setPlayerModalOpen(false);
             setNewPlayerName('');
+            setNewPlayerAvatar(undefined);
             setError('');
         } catch(e) {
             setError('Spieler konnte nicht gespeichert werden.');
+        }
+    };
+
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                setError('Bild zu groß (max. 2MB).');
+                return;
+            }
+            try {
+                const base64 = await processImage(file);
+                setNewPlayerAvatar(base64);
+                setError('');
+            } catch (error) {
+                setError('Bild konnte nicht verarbeitet werden.');
+            }
         }
     };
 
@@ -84,7 +147,10 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
                                     onChange={() => handlePlayerSelection(p.id)}
                                     className="h-6 w-6 rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900"
                                 />
-                                <span className="ml-4 text-lg" style={{ color: p.color }}>{p.name}</span>
+                                <div className="ml-4 flex items-center gap-3">
+                                   <PlayerAvatar avatar={p.avatar} size={32} />
+                                   <span className="text-lg" style={{ color: p.color }}>{p.name}</span>
+                                </div>
                             </label>
                         )) : <p className="text-slate-400">Noch keine Spieler angelegt. Füge einen neuen Spieler hinzu.</p>}
                     </div>
@@ -109,13 +175,22 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
             >
                 <div className="space-y-4 text-left">
                      {error && <p className="text-red-400 text-center">{error}</p>}
-                    <div>
-                        <label htmlFor="playerNameInput" className="block text-lg font-medium mb-2">Name des Spielers</label>
-                        <input type="text" id="playerNameInput" value={newPlayerName} onChange={e => setNewPlayerName(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" placeholder="Max Mustermann" />
-                    </div>
-                    <div>
-                        <label htmlFor="playerColorInput" className="block text-lg font-medium mb-2">Farbe</label>
-                        <input type="color" id="playerColorInput" value={newPlayerColor} onChange={e => setNewPlayerColor(e.target.value)} className="w-full h-12 p-1 bg-slate-800 border-2 border-slate-700 rounded-lg cursor-pointer" />
+                    <div className="flex items-center gap-4">
+                        <div className="flex-shrink-0">
+                            <PlayerAvatar avatar={newPlayerAvatar} size={64} />
+                            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg" />
+                            <button onClick={() => fileInputRef.current?.click()} className="w-full text-xs text-center text-blue-400 hover:underline mt-1">Bild...</button>
+                        </div>
+                        <div className="flex-grow space-y-2">
+                             <div>
+                                <label htmlFor="playerNameInput" className="block text-sm font-medium mb-1">Name</label>
+                                <input type="text" id="playerNameInput" value={newPlayerName} onChange={e => setNewPlayerName(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" placeholder="Max" />
+                            </div>
+                            <div>
+                                <label htmlFor="playerColorInput" className="block text-sm font-medium mb-1">Farbe</label>
+                                <input type="color" id="playerColorInput" value={newPlayerColor} onChange={e => setNewPlayerColor(e.target.value)} className="w-full h-10 p-1 bg-slate-800 border-2 border-slate-700 rounded-lg cursor-pointer" />
+                            </div>
+                        </div>
                     </div>
                 </div>
             </Modal>

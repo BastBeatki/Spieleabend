@@ -200,7 +200,7 @@ export const deleteDocument = async (collectionName: string, docId: string) => {
 
 export const startSession = async (sessionName: string, selectedPlayers: Player[]) => {
     const totalScores = selectedPlayers.reduce((acc, p) => ({ ...acc, [p.id]: 0 }), {});
-    const sessionPlayers: SessionPlayer[] = selectedPlayers.map(({ id, name, color }) => ({ id, name, color }));
+    const sessionPlayers: SessionPlayer[] = selectedPlayers.map(({ id, name, color, avatar }) => ({ id, name, color, avatar }));
     
     const newSession = {
         id: generateId(),
@@ -339,7 +339,8 @@ export const exportData = async (): Promise<FullBackup> => {
         players: dbState.players.map(p => ({
             _id: p.id,
             name: p.name,
-            color: p.color
+            color: p.color,
+            avatar: p.avatar
         })),
         categories: dbState.categories.map(c => ({
             _id: c.id,

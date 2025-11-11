@@ -1,10 +1,11 @@
+
 import React, { useState, useMemo } from 'react';
 import { Session, Game, Player, Category, View, SessionPlayer } from '../../types';
 import * as fb from '../../services/firebaseService';
 import { Header } from '../ui/Header';
 import { Modal } from '../ui/Modal';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Area } from 'recharts';
-import { TrashIcon } from '../ui/Icons';
+import { TrashIcon, PlayerAvatar } from '../ui/Icons';
 import { ChartModeToggle, CustomChartTooltip } from '../ui/ChartModeToggle';
 
 declare const Recharts: any;
@@ -43,32 +44,45 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
     const [chartMode, setChartMode] = useState<'cumulative' | 'perGame'>('cumulative');
     const [modal, setModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm?: (confirmed: boolean) => void }>({ isOpen: false, title: '', message: '' });
 
+    const enrichedSessionPlayers = useMemo(() => {
+        const globalPlayerMap = new Map(players.map(p => [p.id, p]));
+        return session.players.map(sessionPlayer => {
+            const globalPlayer = globalPlayerMap.get(sessionPlayer.id);
+            return {
+                ...sessionPlayer,
+                avatar: globalPlayer?.avatar,
+                name: globalPlayer?.name || sessionPlayer.name,
+                color: globalPlayer?.color || sessionPlayer.color,
+            };
+        });
+    }, [session.players, players]);
+
     const sortedPlayers = useMemo(() => 
-        [...session.players].sort((a, b) => (session.totalScores[b.id] || 0) - (session.totalScores[a.id] || 0)),
-        [session]
+        [...enrichedSessionPlayers].sort((a, b) => (session.totalScores[b.id] || 0) - (session.totalScores[a.id] || 0)),
+        [session.totalScores, enrichedSessionPlayers]
     );
 
     const chartData = useMemo(() => {
         const sortedGames = [...games].sort((a,b) => a.gameNumber - b.gameNumber);
-        const data: any[] = [{ name: 'Start', ...session.players.reduce((acc, p) => ({...acc, [p.name]: 0}), {}) }];
+        const data: any[] = [{ name: 'Start', ...enrichedSessionPlayers.reduce((acc, p) => ({...acc, [p.name]: 0}), {}) }];
         const cumulativeScores: { [pid: string]: number } = {};
         
         sortedGames.forEach(game => {
             const dataPoint: any = { name: `${game.gameNumber}. ${game.name}` };
              if (chartMode === 'cumulative') {
-                session.players.forEach(p => {
+                enrichedSessionPlayers.forEach(p => {
                     cumulativeScores[p.id] = (cumulativeScores[p.id] || 0) + (game.gameScores[p.id] || 0);
                     dataPoint[p.name] = cumulativeScores[p.id];
                 });
             } else { // 'perGame'
-                session.players.forEach(p => {
+                enrichedSessionPlayers.forEach(p => {
                     dataPoint[p.name] = game.gameScores[p.id] || 0;
                 });
             }
             data.push(dataPoint);
         });
         return data;
-    }, [games, session.players, chartMode]);
+    }, [games, enrichedSessionPlayers, chartMode]);
     
     const categoryStats = useMemo(() => {
         const stats: {[catId: string]: { name: string, scores: {[pId: string]: number} }} = {};
@@ -139,7 +153,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                      <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg shadow-md">
                         <div className="w-10 text-center font-bold"><span className={`w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br ${getRankBadge(i+1)} ${getRankText(i+1)}`}>{i+1}</span></div>
                         <div className="flex-grow flex items-center gap-3 ml-3">
-                           <span className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color }}></span>
+                           <PlayerAvatar avatar={p.avatar} size={40} />
                            <span className="font-bold text-lg text-slate-100">{p.name}</span>
                         </div>
                         <div className="text-2xl font-black text-white">{session.totalScores[p.id] || 0} <span className="text-sm font-normal text-slate-400">Punkte</span></div>
@@ -187,7 +201,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                  <defs>
-                                    {session.players.map(p => (
+                                    {enrichedSessionPlayers.map(p => (
                                         <linearGradient key={`color-${p.id}`} id={`color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
                                             <stop offset="95%" stopColor={p.color} stopOpacity={0}/>
@@ -199,7 +213,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                                 <YAxis stroke="#64748b" />
                                 <Tooltip content={<CustomChartTooltip />} />
                                 <Legend wrapperStyle={{ color: '#cbd5e1' }} />
-                                {session.players.map(p => (
+                                {enrichedSessionPlayers.map(p => (
                                     <React.Fragment key={p.id}>
                                         <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')})`} />
                                         <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 6, stroke: 'rgba(255,255,255,0.3)', strokeWidth: 4}} />
@@ -216,7 +230,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                         <div key={cat.name} className="bg-slate-800/80 p-3 rounded-lg">
                             <h4 className="font-semibold mb-2">{cat.name}</h4>
                             <div className="space-y-1">{Object.entries(cat.scores).sort(([,a],[,b]) => b - a).map(([pId, score]) => {
-                                const player = session.players.find(p => p.id === pId);
+                                const player = enrichedSessionPlayers.find(p => p.id === pId);
                                 return player ? <div key={pId} className="flex justify-between text-sm"><span style={{color: player.color}}>{player.name}</span><span className="font-bold">{score} Pkt</span></div> : null;
                             })}</div>
                         </div>
@@ -236,7 +250,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                                 Object.entries(g.gameScores)
                                 .sort(([,a],[,b]) => b - a)
                                 .filter(([,score],_,arr) => score > 0 && score === arr[0][1])
-                                .map(([pId])=>session.players.find(p=>p.id===pId)?.name).join(', ')
+                                .map(([pId])=>enrichedSessionPlayers.find(p=>p.id===pId)?.name).join(', ')
                             }</div>
                              <button onClick={() => handleDeleteGame(g.id, g.name)} className="delete-btn opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 p-1"><TrashIcon size={20} /></button>
                         </div>
@@ -283,7 +297,10 @@ const ManageSessionPlayersModal: React.FC<{isOpen: boolean, onClose: () => void,
                 {availablePlayers.length > 0 ? availablePlayers.map(p => (
                      <label key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg cursor-pointer hover:bg-slate-700/80 transition">
                         <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => togglePlayer(p.id)} className="h-6 w-6 rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900" />
-                        <span className="ml-4 text-lg" style={{ color: p.color }}>{p.name}</span>
+                        <div className="ml-4 flex items-center gap-3">
+                            <PlayerAvatar avatar={p.avatar} size={32} />
+                            <span className="text-lg" style={{ color: p.color }}>{p.name}</span>
+                        </div>
                     </label>
                 )) : <p className="text-slate-400 text-center">Keine weiteren Spieler zum Hinzufügen verfügbar.</p>}
              </div>

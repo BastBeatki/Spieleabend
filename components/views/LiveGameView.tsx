@@ -1,10 +1,11 @@
+
 import React, { useState, useMemo } from 'react';
-import { Session, Game, PointUpdate, View } from '../../types';
+import { Session, Game, PointUpdate, View, Player } from '../../types';
 import * as fb from '../../services/firebaseService';
 import { Header } from '../ui/Header';
 import { Modal } from '../ui/Modal';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Area } from 'recharts';
-import { UndoIcon } from '../ui/Icons';
+import { UndoIcon, PlayerAvatar } from '../ui/Icons';
 import { ChartModeToggle, CustomChartTooltip } from '../ui/ChartModeToggle';
 
 declare const Recharts: any;
@@ -13,39 +14,54 @@ interface LiveGameViewProps {
   session: Session;
   game: Game;
   updates: PointUpdate[];
+  players: Player[];
   navigate: (view: View, data?: any) => void;
 }
 
-export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updates, navigate }) => {
+export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updates, players, navigate }) => {
     const [scoresToAdd, setScoresToAdd] = useState<{ [playerId: string]: number }>({});
     const [modal, setModal] =useState<{ isOpen: boolean; title: string; message: string; onConfirm?: (confirmed: boolean) => void }>({ isOpen: false, title: '', message: '' });
     const [chartMode, setChartMode] = useState<'cumulative' | 'perUpdate'>('cumulative');
+    
+    const enrichedSessionPlayers = useMemo(() => {
+        const globalPlayerMap = new Map(players.map(p => [p.id, p]));
+        return session.players.map(sessionPlayer => {
+            const globalPlayer = globalPlayerMap.get(sessionPlayer.id);
+            return {
+                ...sessionPlayer,
+                avatar: globalPlayer?.avatar,
+                name: globalPlayer?.name || sessionPlayer.name,
+                color: globalPlayer?.color || sessionPlayer.color,
+            };
+        });
+    }, [session.players, players]);
+
 
     const sortedPlayers = useMemo(() =>
-        [...session.players].sort((a, b) => (game.gameScores[b.id] || 0) - (game.gameScores[a.id] || 0)),
-        [game, session.players]
+        [...enrichedSessionPlayers].sort((a, b) => (game.gameScores[b.id] || 0) - (game.gameScores[a.id] || 0)),
+        [game.gameScores, enrichedSessionPlayers]
     );
     
     const chartData = useMemo(() => {
-        const data: any[] = [{ name: 'Start', ...session.players.reduce((acc, p) => ({...acc, [p.name]: 0}), {}) }];
+        const data: any[] = [{ name: 'Start', ...enrichedSessionPlayers.reduce((acc, p) => ({...acc, [p.name]: 0}), {}) }];
         const cumulativeScores: { [pid: string]: number } = {};
         
         updates.forEach((update, index) => {
             const dataPoint: any = { name: `Update ${index + 1}` };
             if (chartMode === 'cumulative') {
-                session.players.forEach(p => {
+                enrichedSessionPlayers.forEach(p => {
                     cumulativeScores[p.id] = (cumulativeScores[p.id] || 0) + (update.scores?.[p.id] || 0);
                     dataPoint[p.name] = cumulativeScores[p.id];
                 });
             } else { // 'perUpdate'
-                session.players.forEach(p => {
+                enrichedSessionPlayers.forEach(p => {
                     dataPoint[p.name] = update.scores?.[p.id] || 0;
                 });
             }
             data.push(dataPoint);
         });
         return data;
-    }, [updates, session.players, chartMode]);
+    }, [updates, enrichedSessionPlayers, chartMode]);
 
     const updateScore = (playerId: string, value: number) => {
         setScoresToAdd(prev => ({ ...prev, [playerId]: value }));
@@ -87,7 +103,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                         <div className="space-y-3">{sortedPlayers.map(p => (
                             <div key={p.id} className="flex items-center justify-between bg-slate-800/80 p-3 rounded-lg">
                                 <div className="flex items-center gap-3">
-                                     <span className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color }}></span>
+                                     <PlayerAvatar avatar={p.avatar} size={32} />
                                     <span className="font-bold text-slate-100">{p.name}</span>
                                 </div>
                                 <span className="text-xl font-black">{game.gameScores[p.id] || 0}</span>
@@ -96,7 +112,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                     </div>
                     <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
                         <h3 className="text-xl font-semibold mb-4">Punkte hinzufügen</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">{session.players.map(p => (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">{enrichedSessionPlayers.map(p => (
                              <div key={p.id} className="bg-slate-800/80 p-4 rounded-lg flex flex-col items-center gap-2">
                                 <label className="font-bold text-lg" style={{ color: p.color }}>{p.name}</label>
                                 <div className="flex items-center justify-center gap-3 w-full">
@@ -133,7 +149,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                 <defs>
-                                    {session.players.map(p => (
+                                    {enrichedSessionPlayers.map(p => (
                                         <linearGradient key={`color-${p.id}`} id={`color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
                                             <stop offset="95%" stopColor={p.color} stopOpacity={0}/>
@@ -145,7 +161,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                                 <YAxis stroke="#64748b" />
                                 <Tooltip content={<CustomChartTooltip />} />
                                 <Legend wrapperStyle={{ color: '#cbd5e1' }} />
-                                {session.players.map(p => (
+                                {enrichedSessionPlayers.map(p => (
                                     <React.Fragment key={p.id}>
                                         <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')})`} />
                                         <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 6, stroke: 'rgba(255,255,255,0.3)', strokeWidth: 4}} />

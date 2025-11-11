@@ -5,6 +5,7 @@ import { Header } from '../ui/Header';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Area } from 'recharts';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { ChartModeToggle, CustomChartTooltip } from '../ui/ChartModeToggle';
+import { PlayerAvatar } from '../ui/Icons';
 
 declare const Recharts: any;
 
@@ -135,7 +136,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                                    <span className={`w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br ${getRankBadge(index + 1)} ${getRankText(index + 1)}`}>{index + 1}</span>
                                 </div>
                                 <div className="flex-grow flex items-center gap-3 ml-3">
-                                   <span className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color }}></span>
+                                   <PlayerAvatar avatar={p.avatar} size={40} />
                                    <span className="font-bold text-lg text-slate-100">{p.name}</span>
                                 </div>
                                 <div className="text-2xl font-black text-white">{p.score} <span className="text-sm font-normal text-slate-400">Punkte</span></div>
@@ -202,7 +203,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                                            <span className={`w-6 h-6 flex items-center justify-center rounded-full text-sm bg-gradient-to-br ${getRankBadge(index + 1)} ${getRankText(index + 1)}`}>{index + 1}</span>
                                         </div>
                                         <div className="flex-grow flex items-center gap-3 ml-2">
-                                           <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color }}></span>
+                                           <PlayerAvatar avatar={p.avatar} size={28} />
                                            <span className="font-bold text-slate-100">{p.name}</span>
                                         </div>
                                         <div className="text-lg font-black text-white">{p.score}</div>

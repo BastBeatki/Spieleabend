@@ -9,12 +9,14 @@ export interface Player {
     id: string;
     name: string;
     color: string;
+    avatar?: string;
 }
 
 export interface SessionPlayer {
     id: string;
     name: string;
     color: string;
+    avatar?: string;
 }
 
 export interface Category {
@@ -57,6 +59,7 @@ interface BaseDoc {
 interface PlayerDoc extends BaseDoc {
     name: string;
     color: string;
+    avatar?: string;
 }
 
 interface CategoryDoc extends BaseDoc {

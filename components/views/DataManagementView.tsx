@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Player, Category, View } from '../../types';
 import * as fb from '../../services/firebaseService';
 import { Header } from '../ui/Header';
 import { Modal } from '../ui/Modal';
-import { EditIcon, TrashIcon, SaveIcon, CancelIcon } from '../ui/Icons';
+import { EditIcon, TrashIcon, SaveIcon, CancelIcon, PlayerAvatar } from '../ui/Icons';
 
 
 interface DataManagementViewProps {
@@ -11,6 +11,48 @@ interface DataManagementViewProps {
   categories: Category[];
   navigate: (view: View) => void;
 }
+
+// Helper function to process and resize images
+const processImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_SIZE = 128;
+                let { width, height } = img;
+
+                if (width > height) {
+                    if (width > MAX_SIZE) {
+                        height *= MAX_SIZE / width;
+                        width = MAX_SIZE;
+                    }
+                } else {
+                    if (height > MAX_SIZE) {
+                        width *= MAX_SIZE / height;
+                        height = MAX_SIZE;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return reject('Could not get canvas context');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.8)); // Use jpeg for smaller size
+            };
+            img.onerror = reject;
+            if (event.target?.result) {
+                img.src = event.target.result as string;
+            } else {
+                reject('Could not read image file.');
+            }
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
 
 export const DataManagementView: React.FC<DataManagementViewProps> = ({ players, categories, navigate }) => {
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -20,6 +62,8 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ players,
     const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
     const [editingPlayerName, setEditingPlayerName] = useState('');
     const [editingPlayerColor, setEditingPlayerColor] = useState('');
+    const [editingPlayerAvatar, setEditingPlayerAvatar] = useState<string | undefined>();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [modal, setModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm?: (confirmed: boolean) => void }>({ isOpen: false, title: '', message: '' });
 
@@ -63,8 +107,9 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ players,
     const handleUpdatePlayer = async () => {
         if (!editingPlayerId || !editingPlayerName.trim()) return;
         try {
-            await fb.updateDocument('players', editingPlayerId, { name: editingPlayerName, color: editingPlayerColor });
+            await fb.updateDocument('players', editingPlayerId, { name: editingPlayerName, color: editingPlayerColor, avatar: editingPlayerAvatar });
             setEditingPlayerId(null);
+            setEditingPlayerAvatar(undefined);
         } catch (e) { console.error(e); }
     };
 
@@ -73,6 +118,22 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ players,
             closeModal();
             if (confirmed) await fb.deleteDocument('players', id);
         });
+    };
+
+     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) { // 2MB limit
+                showAlert('Bild zu groß', 'Bitte wähle ein Bild, das kleiner als 2MB ist.');
+                return;
+            }
+            try {
+                const base64 = await processImage(file);
+                setEditingPlayerAvatar(base64);
+            } catch (error) {
+                showAlert('Fehler bei der Bildverarbeitung', 'Das Bild konnte nicht verarbeitet werden.');
+            }
+        }
     };
 
     return (
@@ -117,25 +178,35 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ players,
                    {players.map(p => (
                        <div key={p.id} className="bg-slate-800/80 p-3 rounded-lg flex justify-between items-center group">
                             {editingPlayerId === p.id ? (
-                                <div className="flex-grow flex items-center gap-2">
-                                    <input type="text" value={editingPlayerName} onChange={e => setEditingPlayerName(e.target.value)} className="flex-grow bg-slate-700 text-white border-2 border-slate-600 rounded-lg py-1 px-2" />
-                                    <input type="color" value={editingPlayerColor} onChange={e => setEditingPlayerColor(e.target.value)} className="w-10 h-8 p-0 bg-transparent border-none rounded-lg cursor-pointer" />
+                                <div className="flex-grow flex items-center gap-4">
+                                    <div className="flex flex-col items-center gap-1">
+                                        <PlayerAvatar avatar={editingPlayerAvatar} size={64} />
+                                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg" />
+                                        <div className='flex gap-2'>
+                                            <button onClick={() => fileInputRef.current?.click()} className="text-xs text-blue-400 hover:underline">Ändern</button>
+                                            {editingPlayerAvatar && <button onClick={() => setEditingPlayerAvatar('')} className="text-xs text-red-400 hover:underline">Entfernen</button>}
+                                        </div>
+                                    </div>
+                                    <div className="flex-grow space-y-2">
+                                        <input type="text" value={editingPlayerName} onChange={e => setEditingPlayerName(e.target.value)} className="w-full bg-slate-700 text-white border-2 border-slate-600 rounded-lg py-2 px-3" />
+                                        <input type="color" value={editingPlayerColor} onChange={e => setEditingPlayerColor(e.target.value)} className="w-full h-10 p-1 bg-slate-700 border-2 border-slate-600 rounded-lg cursor-pointer" />
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-3">
-                                    <span className="w-4 h-4 rounded-full" style={{ backgroundColor: p.color }}></span>
-                                    <span className="font-bold">{p.name}</span>
+                                    <PlayerAvatar avatar={p.avatar} size={40} />
+                                    <span className="font-bold text-lg" style={{color: p.color}}>{p.name}</span>
                                 </div>
                             )}
                             <div className="flex gap-2 ml-4">
                                 {editingPlayerId === p.id ? (
                                      <>
                                         <button onClick={handleUpdatePlayer} className="text-blue-400 hover:text-blue-300 p-1"><SaveIcon /></button>
-                                        <button onClick={() => setEditingPlayerId(null)} className="text-red-400 hover:text-red-300 p-1"><CancelIcon /></button>
+                                        <button onClick={() => {setEditingPlayerId(null); setEditingPlayerAvatar(undefined)}} className="text-red-400 hover:text-red-300 p-1"><CancelIcon /></button>
                                     </>
                                 ) : (
                                     <>
-                                        <button onClick={() => { setEditingPlayerId(p.id); setEditingPlayerName(p.name); setEditingPlayerColor(p.color) }} className="opacity-0 group-hover:opacity-100 text-blue-400 hover:text-blue-300 p-1"><EditIcon /></button>
+                                        <button onClick={() => { setEditingPlayerId(p.id); setEditingPlayerName(p.name); setEditingPlayerColor(p.color); setEditingPlayerAvatar(p.avatar); }} className="opacity-0 group-hover:opacity-100 text-blue-400 hover:text-blue-300 p-1"><EditIcon /></button>
                                         <button onClick={() => handleDeletePlayer(p.id, p.name)} className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 p-1"><TrashIcon /></button>
                                     </>
                                 )}
