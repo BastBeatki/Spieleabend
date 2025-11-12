@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Session, Game, PointUpdate, View, Player, SessionPlayer } from '../../types';
 import * as fb from '../../services/firebaseService';
@@ -26,9 +27,8 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
     
     const enrichedSessionPlayers: SessionPlayer[] = useMemo(() => {
         const globalPlayerMap = new Map(players.map(p => [p.id, p]));
-        // FIX: Explicitly typed the `sessionPlayer` parameter in the `map` function as `SessionPlayer`.
-        // This resolves a TypeScript type inference issue where `sessionPlayer` was being treated
-        // as `unknown`, causing errors when accessing its properties.
+        // FIX: Explicitly typed the `sessionPlayer` parameter as `SessionPlayer` to resolve a TypeScript
+        // type inference issue where it was being treated as `unknown`, causing errors when accessing its properties.
         return session.players.map((sessionPlayer: SessionPlayer) => {
             const globalPlayer = globalPlayerMap.get(sessionPlayer.id);
             if (globalPlayer) {

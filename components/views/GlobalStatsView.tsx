@@ -5,7 +5,7 @@ import { Header } from '../ui/Header';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Area } from 'recharts';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { ChartModeToggle, CustomChartTooltip } from '../ui/ChartModeToggle';
-import { PlayerAvatar } from '../ui/Icons';
+import { PlayerAvatar, UsersIcon, CancelIcon } from '../ui/Icons';
 
 declare const Recharts: any;
 
@@ -51,7 +51,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
     const [chartMode, setChartMode] = useState<'perSession' | 'cumulative'>('perSession');
     const [categoryChartMode, setCategoryChartMode] = useState<'perGame' | 'cumulative'>('perGame');
-
+    const [comparisonPlayerIds, setComparisonPlayerIds] = useState<Set<string>>(new Set());
 
      useEffect(() => {
         fb.getAllGames().then(games => {
@@ -59,11 +59,52 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
             setIsLoading(false);
         });
     }, []);
+    
+    const handlePlayerSelection = (playerId: string) => {
+        const newSelection = new Set(comparisonPlayerIds);
+        if (newSelection.has(playerId)) {
+            newSelection.delete(playerId);
+        } else {
+            newSelection.add(playerId);
+        }
+        setComparisonPlayerIds(newSelection);
+    };
+
+    const handleResetComparison = () => {
+        setComparisonPlayerIds(new Set());
+    };
+
+    // --- Data Filtering for Comparison Mode ---
+    const isComparisonActive = useMemo(() => comparisonPlayerIds.size >= 2, [comparisonPlayerIds]);
+
+    const comparisonPlayers = useMemo(() => {
+        if (!isComparisonActive) return players;
+        return players.filter(p => comparisonPlayerIds.has(p.id));
+    }, [isComparisonActive, comparisonPlayerIds, players]);
+
+    const comparisonSessions = useMemo(() => {
+        if (!isComparisonActive) return sessions;
+        return sessions.filter(s => {
+            const sessionPlayerIds = new Set(s.players.map(p => p.id));
+            return Array.from(comparisonPlayerIds).every(id => sessionPlayerIds.has(id));
+        });
+    }, [isComparisonActive, comparisonPlayerIds, sessions]);
+
+    const comparisonGames = useMemo(() => {
+        if (!isComparisonActive || !allGames) return allGames;
+        const comparisonSessionIds = new Set(comparisonSessions.map(s => s.id));
+        return allGames.filter(g => comparisonSessionIds.has(g.sessionId));
+    }, [isComparisonActive, allGames, comparisonSessions]);
+
+    // --- Active Data Sources ---
+    const activePlayers = isComparisonActive ? comparisonPlayers : players;
+    const activeSessions = isComparisonActive ? comparisonSessions : sessions;
+    const activeGames = isComparisonActive ? comparisonGames : allGames;
 
     const globalLeaderboard = useMemo(() => {
-        if (!allGames) return [];
+        if (!activeGames) return [];
 
-        const gamesBySession = allGames.reduce((acc, game) => {
+        const gamesBySession = activeGames.reduce((acc, game) => {
             if (!acc[game.sessionId]) acc[game.sessionId] = [];
             acc[game.sessionId].push(game);
             return acc;
@@ -94,11 +135,11 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
         };
         
         const playerStats: { [playerId: string]: { sessionsWon: number; totalScore: number } } = {};
-        players.forEach(p => {
+        activePlayers.forEach(p => {
             playerStats[p.id] = { sessionsWon: 0, totalScore: 0 };
         });
 
-        sessions.forEach(s => {
+        activeSessions.forEach(s => {
             const gamesInSession = gamesBySession[s.id] || [];
             const winnerIds = getSessionWinnerIds(s, gamesInSession);
             winnerIds.forEach(id => {
@@ -111,7 +152,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
             });
         });
         
-        return players
+        return activePlayers
             .map(p => ({ ...p, ...playerStats[p.id] }))
             .sort((a, b) => {
                 if (b.sessionsWon !== a.sessionsWon) {
@@ -120,20 +161,19 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                 return b.totalScore - a.totalScore;
             });
 
-    }, [sessions, players, allGames]);
+    }, [activeSessions, activePlayers, activeGames]);
 
     const { gameWinsLeaderboard, categoryWinsLeaderboard } = useMemo(() => {
-        if (!allGames || !players.length) {
+        if (!activeGames || !activePlayers.length) {
             return { gameWinsLeaderboard: [], categoryWinsLeaderboard: [] };
         }
 
-        // --- Calculate Game Wins ---
         const gameWinStats: { [playerId: string]: { gamesWon: number } } = {};
-        players.forEach(p => {
+        activePlayers.forEach(p => {
             gameWinStats[p.id] = { gamesWon: 0 };
         });
 
-        allGames.forEach(game => {
+        activeGames.forEach(game => {
             const winnerIds = getGameWinnerIds(game.gameScores);
             winnerIds.forEach(winnerId => {
                 if (gameWinStats[winnerId]) {
@@ -142,27 +182,26 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
             });
         });
 
-        const finalGameWinsLeaderboard = players
+        const finalGameWinsLeaderboard = activePlayers
             .map(p => ({ ...p, ...gameWinStats[p.id] }))
             .sort((a, b) => b.gamesWon - a.gamesWon);
 
-        // --- Calculate Category Wins (Dominance) ---
         const winsByCategory: { [catId: string]: { [pId: string]: number } } = {};
 
-        allGames.forEach(game => {
+        activeGames.forEach(game => {
             if (!winsByCategory[game.categoryId]) {
                 winsByCategory[game.categoryId] = {};
             }
             const winnerIds = getGameWinnerIds(game.gameScores);
             winnerIds.forEach(winnerId => {
-                if (players.some(p => p.id === winnerId)) {
+                if (activePlayers.some(p => p.id === winnerId)) {
                      winsByCategory[game.categoryId][winnerId] = (winsByCategory[game.categoryId][winnerId] || 0) + 1;
                 }
             });
         });
 
         const categoryDominance: { [pId: string]: number } = {};
-        players.forEach(p => (categoryDominance[p.id] = 0));
+        activePlayers.forEach(p => (categoryDominance[p.id] = 0));
 
         Object.values(winsByCategory).forEach(playerWins => {
             const scores = Object.values(playerWins);
@@ -180,7 +219,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
             }
         });
 
-        const finalCategoryWinsLeaderboard = players
+        const finalCategoryWinsLeaderboard = activePlayers
             .map(p => ({ ...p, categoriesWon: categoryDominance[p.id] || 0 }))
             .sort((a, b) => b.categoriesWon - a.categoriesWon);
 
@@ -188,38 +227,39 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
             gameWinsLeaderboard: finalGameWinsLeaderboard,
             categoryWinsLeaderboard: finalCategoryWinsLeaderboard,
         };
-    }, [allGames, players]);
+    }, [activeGames, activePlayers]);
     
-    const sortedSessions = useMemo(() => [...sessions].sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis()), [sessions]);
+    const sortedActiveSessions = useMemo(() => [...activeSessions].sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis()), [activeSessions]);
 
     const timelineData = useMemo(() => {
-        const data: any[] = [{ name: 'Start', ...players.reduce((acc, p) => ({...acc, [p.name]: 0}), {}) }];
+        const data: any[] = [{ name: 'Start', ...activePlayers.reduce((acc, p) => ({...acc, [p.name]: 0}), {}) }];
         const cumulativeScores: { [pid: string]: number } = {};
         
-        sortedSessions.forEach(session => {
+        sortedActiveSessions.forEach(session => {
             const dataPoint: any = { name: session.name };
             if (chartMode === 'cumulative') {
-                 players.forEach(p => {
+                 activePlayers.forEach(p => {
                     cumulativeScores[p.id] = (cumulativeScores[p.id] || 0) + (session.totalScores[p.id] || 0);
                     dataPoint[p.name] = cumulativeScores[p.id];
                 });
             } else { // 'perSession'
-                players.forEach(p => {
+                activePlayers.forEach(p => {
                     dataPoint[p.name] = session.totalScores[p.id] || 0;
                 });
             }
             data.push(dataPoint);
         });
         return data;
-    }, [sortedSessions, players, chartMode]);
+    }, [sortedActiveSessions, activePlayers, chartMode]);
 
     const categoryStats = useMemo(() => {
-        if (!selectedCategoryId || !allGames) return null;
+        if (!selectedCategoryId || !activeGames) return null;
 
-        const filteredGames = allGames.filter(g => g.categoryId === selectedCategoryId);
+        const filteredGames = activeGames.filter(g => g.categoryId === selectedCategoryId);
+        if (filteredGames.length === 0) return null;
         
         const playerStats: { [pid: string]: { gamesWon: number; score: number } } = {};
-        players.forEach(p => {
+        activePlayers.forEach(p => {
             playerStats[p.id] = { gamesWon: 0, score: 0 };
         });
 
@@ -233,7 +273,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
             });
         });
         
-        const leaderboard = players
+        const leaderboard = activePlayers
             .map(p => ({...p, ...playerStats[p.id]}))
             .filter(p => p.gamesWon > 0 || p.score > 0)
             .sort((a, b) => {
@@ -242,17 +282,17 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
             });
         
         const sortedFilteredGames = [...filteredGames].sort((a,b) => a.createdAt.toMillis() - b.createdAt.toMillis());
-        const categoryTimelineData: any[] = [{ name: 'Start', ...players.reduce((acc, p) => ({...acc, [p.name]: 0}), {}) }];
+        const categoryTimelineData: any[] = [{ name: 'Start', ...activePlayers.reduce((acc, p) => ({...acc, [p.name]: 0}), {}) }];
         const cumulativeScores: { [pid: string]: number } = {};
         sortedFilteredGames.forEach(game => {
             const dataPoint: any = { name: `${game.name} (${game.sessionName})` };
             if (categoryChartMode === 'cumulative') {
-                 players.forEach(p => {
+                 activePlayers.forEach(p => {
                     cumulativeScores[p.id] = (cumulativeScores[p.id] || 0) + (game.gameScores[p.id] || 0);
                     dataPoint[p.name] = cumulativeScores[p.id];
                 });
             } else { // 'perGame'
-                players.forEach(p => {
+                activePlayers.forEach(p => {
                     dataPoint[p.name] = game.gameScores[p.id] || 0;
                 });
             }
@@ -261,16 +301,44 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
 
         return { leaderboard, timelineData: categoryTimelineData };
 
-    }, [allGames, selectedCategoryId, players, categoryChartMode]);
+    }, [activeGames, selectedCategoryId, activePlayers, categoryChartMode]);
 
     if (isLoading) return <LoadingSpinner text="Lade Statistiken..." />;
 
     return (
         <>
             <Header title="Karriere-Statistiken" onBack={() => navigate('home')} backText="Zurück zur Übersicht" />
+
+            <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-semibold flex items-center gap-3"><UsersIcon size={24}/> Direkter Vergleich</h3>
+                    {isComparisonActive && (
+                        <button onClick={handleResetComparison} className="flex items-center gap-2 text-sm bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 font-semibold py-2 px-3 rounded-lg transition duration-300">
+                           <CancelIcon size={16} /> Zurücksetzen
+                        </button>
+                    )}
+                </div>
+                <p className="text-slate-400 mb-4 text-sm">Wähle mindestens zwei Spieler aus, um deren Karrieren nur in gemeinsamen Sessions zu vergleichen.</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    {players.map(p => (
+                        <div
+                            key={p.id}
+                            onClick={() => handlePlayerSelection(p.id)}
+                            className={`p-3 rounded-lg cursor-pointer transition-all border-2 flex flex-col items-center gap-2 ${
+                                comparisonPlayerIds.has(p.id)
+                                ? 'border-blue-500 bg-slate-800 shadow-lg'
+                                : 'border-slate-800 bg-slate-800/50 hover:bg-slate-800/80 hover:border-slate-700'
+                            }`}
+                        >
+                            <PlayerAvatar avatar={p.avatar} localAvatar={p.localAvatar} size={48} />
+                            <span className="font-semibold text-sm text-center truncate w-full">{p.name}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
             
             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
-                <h3 className="text-xl font-semibold mb-4">Gesamt-Leaderboard (nach Session-Siegen)</h3>
+                <h3 className="text-xl font-semibold mb-4">{isComparisonActive ? 'Leaderboard (Direkter Vergleich)' : 'Gesamt-Leaderboard (nach Session-Siegen)'}</h3>
                 <div className="space-y-3">{globalLeaderboard.map((p, i) => (
                      <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg shadow-md">
                         <div className="w-10 text-center font-bold"><span className={`w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br ${getRankBadge(i+1)} ${getRankText(i+1)}`}>{i+1}</span></div>
@@ -288,7 +356,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                 <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
-                    <h3 className="text-xl font-semibold mb-4">Spiele gewonnen</h3>
+                    <h3 className="text-xl font-semibold mb-4">{isComparisonActive ? 'Spiele gewonnen (Direkter Vergleich)' : 'Spiele gewonnen'}</h3>
                     <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
                         {gameWinsLeaderboard.map((p, i) => (
                             <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg">
@@ -307,7 +375,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                 </div>
 
                 <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
-                    <h3 className="text-xl font-semibold mb-4">Kategorien gewonnen</h3>
+                    <h3 className="text-xl font-semibold mb-4">{isComparisonActive ? 'Kategorien gewonnen (Direkter Vergleich)' : 'Kategorien gewonnen'}</h3>
                     <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
                         {categoryWinsLeaderboard.map((p, i) => (
                             <div key={p.id} className="flex items-center bg-slate-800/80 p-3 rounded-lg">
@@ -328,7 +396,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
 
             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
                  <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
-                    <h3 className="text-xl font-semibold">Punkteverlauf (Gesamt)</h3>
+                    <h3 className="text-xl font-semibold">{isComparisonActive ? 'Punkteverlauf (Direkter Vergleich)' : 'Punkteverlauf (Gesamt)'}</h3>
                     <ChartModeToggle
                         currentMode={chartMode}
                         onChange={(mode) => setChartMode(mode as 'perSession' | 'cumulative')}
@@ -342,7 +410,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={timelineData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                              <defs>
-                                {players.map(p => (
+                                {activePlayers.map(p => (
                                     <linearGradient key={`color-${p.id}`} id={`color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
                                         <stop offset="95%" stopColor={p.color} stopOpacity={0}/>
@@ -354,7 +422,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                             <YAxis stroke="#64748b" />
                             <Tooltip content={<CustomChartTooltip />} />
                             <Legend wrapperStyle={{ color: '#cbd5e1' }} />
-                            {players.map(p => (
+                            {activePlayers.map(p => (
                                 <React.Fragment key={p.id}>
                                     <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')})`} />
                                     <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 6, stroke: 'rgba(255,255,255,0.3)', strokeWidth: 4}} />
@@ -366,7 +434,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
             </div>
 
             <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
-                <h3 className="text-xl font-semibold mb-4">Statistiken nach Kategorie</h3>
+                <h3 className="text-xl font-semibold mb-4">Statistiken nach Kategorie {isComparisonActive && '(Direkter Vergleich)'}</h3>
                 <select value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-lg py-3 px-4 mb-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
                     <option value="">Wähle eine Kategorie...</option>
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -404,7 +472,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={categoryStats.timelineData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                         <defs>
-                                            {players.map(p => (
+                                            {activePlayers.map(p => (
                                                 <linearGradient key={`color-${p.id}-cat`} id={`color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}-cat`} x1="0" y1="0" x2="0" y2="1">
                                                     <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
                                                     <stop offset="95%" stopColor={p.color} stopOpacity={0}/>
@@ -416,7 +484,7 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                                         <YAxis stroke="#64748b" />
                                         <Tooltip content={<CustomChartTooltip />} />
                                         <Legend wrapperStyle={{ color: '#cbd5e1' }} />
-                                        {players.map(p => (
+                                        {activePlayers.map(p => (
                                             <React.Fragment key={p.id}>
                                                 <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}-cat)`} />
                                                 <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 6}} />
@@ -427,6 +495,11 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                             </div>
                         </div>
                      </div>
+                )}
+                 {selectedCategoryId && !categoryStats && (
+                    <div className="text-center text-slate-500 py-8">
+                        <p>Für diese Kategorie gibt es keine Spiele in der aktuellen Auswahl.</p>
+                    </div>
                 )}
             </div>
         </>
