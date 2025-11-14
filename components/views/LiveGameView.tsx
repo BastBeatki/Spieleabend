@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import { Session, Game, PointUpdate, View, Player, SessionPlayer } from '../../types';
 import * as fb from '../../services/firebaseService';
@@ -43,7 +44,6 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
             }
             // If global player is not found (e.g., has been deleted),
             // use the player data stored within the session.
-            // Reconstruct the object to ensure it's a clean SessionPlayer instance.
             return {
                 id: sessionPlayer.id,
                 name: sessionPlayer.name,
@@ -86,7 +86,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
     };
     
     const handleUpdateScores = async () => {
-        const hasScores = Object.values(scoresToAdd).some(s => s !== 0);
+        const hasScores = Object.values(scoresToAdd).some(s => s !== 0 && !isNaN(s));
         if (!hasScores) {
             setModal({isOpen: true, title: 'Keine Punkte', message: 'Bitte trage Punkte ein.'});
             return;

@@ -1,11 +1,22 @@
 import { mockBackupData } from './mockData';
 import { Player, Category, Session, Game, PointUpdate, FullBackup, Timestamp as ITimestamp, SessionPlayer } from '../types';
-import { idbService } from './indexedDbService';
+import * as dbService from './indexedDbService';
+
+// In-memory state acts as a cache, loaded from IndexedDB on startup.
+let dbState: {
+    players: Player[];
+    categories: Category[];
+    sessions: (Omit<Session, 'id'> & { id: string; games: Game[] })[];
+} = {
+    players: [],
+    categories: [],
+    sessions: [],
+};
 
 type ListenerCallback = (data: any) => void;
 const listeners = new Map<string, Set<ListenerCallback>>();
 
-// A mock Timestamp class that is compatible with Firebase's Timestamp interface.
+// Mock Timestamp that is compatible with Firebase's Timestamp
 class MockTimestamp implements ITimestamp {
     constructor(private date: Date) {}
     static now = () => new MockTimestamp(new Date());
@@ -14,104 +25,40 @@ class MockTimestamp implements ITimestamp {
     toMillis = () => this.date.getTime();
 }
 
-// Helper to convert plain JS objects from IDB back into objects with MockTimestamp instances.
-// IndexedDB stores native Date objects, but the app expects the MockTimestamp class instance.
-const fromDb = (obj: any): any => {
-    if (!obj) return obj;
-    // Deep copy to avoid mutating the object in place and convert ISO strings to Date objects
-    const newObj = JSON.parse(JSON.stringify(obj));
-    const convert = (o: any) => {
-        for (const key in o) {
-            if (o.hasOwnProperty(key)) {
-                // Check if the value is a string that looks like a Date
-                if (typeof o[key] === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/.test(o[key])) {
-                    o[key] = MockTimestamp.fromDate(new Date(o[key]));
-                } else if (o[key] instanceof Date) { // Or if it's already a Date object
-                    o[key] = MockTimestamp.fromDate(o[key]);
-                } else if (typeof o[key] === 'object' && o[key] !== null) {
-                    convert(o[key]);
-                }
-            }
-        }
-    };
-    convert(newObj);
-    return newObj;
-};
-
-// Helper to convert objects with MockTimestamp instances to plain JS objects with native Date objects for IDB storage.
-const toDb = (obj: any): any => {
-    // Deep copy to ensure the original object is not mutated
-    const storableObj = JSON.parse(JSON.stringify(obj));
-    const convert = (o: any) => {
-        for (const key in o) {
-            if (o.hasOwnProperty(key)) {
-                // The MockTimestamp class is identified by having a `toDate` method.
-                if (o[key] && typeof o[key].toDate === 'function') {
-                    o[key] = o[key].toDate();
-                } else if (typeof o[key] === 'object' && o[key] !== null) {
-                    convert(o[key]);
-                }
-            }
-        }
-    };
-    convert(storableObj);
-    return storableObj;
-};
-
-const notify = async (path: string) => {
-    const cbs = listeners.get(path);
-    if (!cbs) return;
-
-    const pathParts = path.split('/');
-    if (pathParts.length > 1) {
-        const [collectionName, docId, subCollectionName, subDocId] = pathParts;
-        if (pathParts[0] === 'sessions' && subCollectionName === 'games' && subDocId && pathParts[4] === 'pointUpdates') {
-             const session = await idbService.get<Session & { games: Game[] }>('sessions', docId);
-             const game = session?.games.find(g => g.id === subDocId);
-             const data = game?.pointUpdates ?? [];
-             cbs.forEach(cb => cb(data.map(fromDb)));
-        } else if (pathParts[0] === 'sessions' && subCollectionName === 'games') {
-             const session = await idbService.get<Session & { games: Game[] }>('sessions', docId);
-             const data = session?.games ?? [];
-             cbs.forEach(cb => cb(data.map(fromDb)));
-        } else {
-             const doc = await idbService.get(collectionName, docId);
-             cbs.forEach(cb => cb(doc ? fromDb(doc) : null));
-        }
-    } else {
-        const data = await idbService.getAll(path);
-        cbs.forEach(cb => cb(data.map(fromDb)));
+// Recursive function to convert Date objects back to MockTimestamp instances after reading from DB
+const deserializeTimestamps = (obj: any): any => {
+    if (obj instanceof Date) {
+        return MockTimestamp.fromDate(obj);
     }
-};
-
-const generateId = () => Math.random().toString(36).substring(2, 15);
-
-const initializeMockData = async () => {
-    const players = await idbService.getAll<Player>('players');
-    if (players.length === 0) {
-        console.log("IndexedDB is empty. Populating with initial mock data.");
-        
-        const playersToStore = mockBackupData.players.map(p => ({ ...p, id: p._id }));
-        const categoriesToStore = mockBackupData.categories.map(c => ({ ...c, id: c._id }));
-        const sessionsToStore = mockBackupData.sessions.map(s => {
-            const games = s.games.map(g => ({
-                ...g,
-                id: g._id,
-                createdAt: new Date(g.createdAt),
-                pointUpdates: (g.pointUpdates || []).map(pu => ({ ...pu, id: pu._id, createdAt: new Date(pu.createdAt) }))
-            }));
-            return { ...s, id: s._id, createdAt: new Date(s.createdAt), games };
-        });
-
-        await idbService.bulkPut('players', playersToStore);
-        await idbService.bulkPut('categories', categoriesToStore);
-        await idbService.bulkPut('sessions', sessionsToStore);
+    if (Array.isArray(obj)) {
+        return obj.map(deserializeTimestamps);
     }
+    if (typeof obj === 'object' && obj !== null) {
+        return Object.fromEntries(
+            Object.entries(obj).map(([key, value]) => [key, deserializeTimestamps(value)])
+        );
+    }
+    return obj;
 };
 
-const enrichSessionPlayers = async (session: Session | Omit<Session, 'id'>) => {
-    const allPlayers = await idbService.getAll<Player>('players');
-    const playerMap = new Map(allPlayers.map(p => [p.id, p]));
+// Recursive function to convert MockTimestamp instances to Date objects for IndexedDB storage
+const serializeTimestamps = (obj: any): any => {
+    if (obj instanceof MockTimestamp) {
+        return obj.toDate();
+    }
+    if (Array.isArray(obj)) {
+        return obj.map(serializeTimestamps);
+    }
+    if (typeof obj === 'object' && obj !== null) {
+         return Object.fromEntries(
+            Object.entries(obj).map(([key, value]) => [key, serializeTimestamps(value)])
+        );
+    }
+    return obj;
+};
+
+const enrichSessionPlayers = (session: Session | Omit<Session, 'id'>, playerSource: Player[]) => {
+    const playerMap = new Map(playerSource.map(p => [p.id, p]));
     session.players.forEach(sp => {
         const globalPlayer = playerMap.get(sp.id);
         if (globalPlayer) {
@@ -123,127 +70,198 @@ const enrichSessionPlayers = async (session: Session | Omit<Session, 'id'>) => {
     });
 };
 
+const loadDataFromDb = async () => {
+    const players = await dbService.getAll<Player>('players');
+    const categories = await dbService.getAll<Category>('categories');
+    const sessions = await dbService.getAll<any>('sessions');
+
+    if (players.length === 0 && categories.length === 0 && sessions.length === 0) {
+        // First time load, populate from mockData
+        await importData(mockBackupData);
+        return; // importData will recall this function's logic
+    } else {
+        dbState.players = players;
+        dbState.categories = categories;
+        // Convert Dates back to MockTimestamps after loading from DB
+        dbState.sessions = deserializeTimestamps(sessions);
+    }
+};
+
+const notify = (path: string) => {
+    const cbs = listeners.get(path);
+    if (!cbs) return;
+
+    const pathParts = path.split('/');
+    if (pathParts.length > 1) { // subcollection or document
+        const [collectionName, docId, subCollectionName, _subDocId, subSubCollectionName] = pathParts;
+        
+        if (subSubCollectionName) { // sub-sub-collection e.g. sessions/sid/games/gid/pointUpdates
+            const parentSession = dbState.sessions.find(s => s.id === docId);
+            const parentGame = parentSession?.games.find(g => g.id === _subDocId);
+            const data = parentGame?.pointUpdates ?? [];
+            cbs.forEach(cb => cb(data));
+        } else if (subCollectionName) { // subcollection
+            const parentDoc = (dbState as any)[collectionName]?.find((d: any) => d.id === docId);
+            const data = parentDoc ? parentDoc.games : [];
+            cbs.forEach(cb => cb(data));
+        } else { // document
+             const parentDoc = (dbState as any)[collectionName]?.find((d: any) => d.id === docId);
+             cbs.forEach(cb => cb(parentDoc || null));
+        }
+    } else { // root collection
+        const data = (dbState as any)[path] || [];
+        cbs.forEach(cb => cb(data));
+    }
+};
+
+const generateId = () => Math.random().toString(36).substring(2, 15);
+
+// --- MOCK SERVICE IMPLEMENTATION ---
 let isInitialized = false;
 
 export const onAuth = (callback: (user: object | null, error?: Error) => void) => {
-    (async () => {
+    const init = async () => {
         if (!isInitialized) {
-            await initializeMockData();
-            isInitialized = true;
+            try {
+                // FIX: Removed call to dbService.openDB() as it's not exported and is called implicitly by dbService methods.
+                await loadDataFromDb();
+                isInitialized = true;
+            } catch (e) {
+                console.error("Failed to initialize local database:", e);
+                callback(null, e as Error);
+                return;
+            }
         }
         callback({ uid: 'mockUser' });
-    })();
+    }
+    setTimeout(init, 100);
     return () => {};
 };
 
 export function subscribeToCollection<T>(collectionName: string, setData: (data: T[]) => void, options: any = {}) {
-    const listener = async () => {
-        let data = await idbService.getAll<T>(collectionName);
+    if (!listeners.has(collectionName)) listeners.set(collectionName, new Set());
+    
+    const listener = (data: T[]) => {
+        let processedData = [...data];
         if (options.orderBy) {
             const key = Array.isArray(options.orderBy) ? options.orderBy[0] : options.orderBy;
             const dir = Array.isArray(options.orderBy) ? options.orderBy[1] : 'asc';
-             data.sort((a: any, b: any) => {
-                const valA = a[key] instanceof Date ? a[key].getTime() : a[key];
-                const valB = b[key] instanceof Date ? b[key].getTime() : b[key];
+             processedData.sort((a: any, b: any) => {
+                const valA = a[key] instanceof MockTimestamp ? a[key].toMillis() : a[key];
+                const valB = b[key] instanceof MockTimestamp ? b[key].toMillis() : b[key];
                 if (valA < valB) return dir === 'asc' ? -1 : 1;
                 if (valA > valB) return dir === 'asc' ? 1 : -1;
                 return 0;
             });
         }
-        setData(data.map(fromDb));
+        setData(processedData);
     };
-
-    if (!listeners.has(collectionName)) listeners.set(collectionName, new Set());
+    
     listeners.get(collectionName)!.add(listener);
-    listener();
+    listener((dbState as any)[collectionName] || []);
     return () => listeners.get(collectionName)?.delete(listener);
 }
 
 export function subscribeToSubCollection<T>(path: string, setData: (data: T[]) => void, options: any = {}) {
-    const listener = async () => {
-        const pathParts = path.split('/');
-        let collectionData: any[] = [];
-        if (pathParts[0] === 'sessions' && pathParts[2] === 'games') {
-             const session = await idbService.get<Session & {games: Game[]}>(pathParts[0], pathParts[1]);
-             collectionData = session?.games ?? [];
-        } else if (pathParts[0] === 'sessions' && pathParts[2] === 'games' && pathParts[4] === 'pointUpdates') {
-            const session = await idbService.get<Session & {games: Game[]}>(pathParts[0], pathParts[1]);
-            const game = session?.games.find(g => g.id === pathParts[3]);
-            collectionData = game?.pointUpdates ?? [];
-        }
-
-        if (options.orderBy) {
+     const pathParts = path.split('/');
+     
+    if (!listeners.has(path)) listeners.set(path, new Set());
+    
+    const listener = (data: T[]) => {
+        const processedData = [...data];
+         if (options.orderBy) {
             const [key, dir] = options.orderBy;
-            collectionData.sort((a: any, b: any) => {
-                const valA = a[key] instanceof Date ? a[key].getTime() : a[key];
-                const valB = b[key] instanceof Date ? b[key].getTime() : b[key];
+            processedData.sort((a: any, b: any) => {
+                const valA = a[key] instanceof MockTimestamp ? a[key].toMillis() : a[key];
+                const valB = b[key] instanceof MockTimestamp ? b[key].toMillis() : b[key];
                 if (valA < valB) return dir === 'asc' ? -1 : 1;
                 if (valA > valB) return dir === 'asc' ? 1 : -1;
                 return 0;
             });
         }
-        setData(collectionData.map(fromDb));
+        setData(processedData);
     };
-    
-    if (!listeners.has(path)) listeners.set(path, new Set());
+
     listeners.get(path)!.add(listener);
-    listener();
+
+    let collectionData: any[] = [];
+    if (pathParts.length === 3 && pathParts[0] === 'sessions' && pathParts[2] === 'games') {
+        const [, sessionId] = pathParts;
+        const parentDoc = dbState.sessions.find(d => d.id === sessionId);
+        collectionData = parentDoc ? parentDoc.games || [] : [];
+    } else if (pathParts.length === 5 && pathParts[0] === 'sessions' && pathParts[2] === 'games' && pathParts[4] === 'pointUpdates') {
+        const [, sessionId, , gameId] = pathParts;
+        const session = dbState.sessions.find(s => s.id === sessionId);
+        const game = session?.games.find(g => g.id === gameId);
+        collectionData = game ? game.pointUpdates || [] : [];
+    }
+    
+    listener(collectionData);
     return () => listeners.get(path)?.delete(listener);
 }
 
 export function subscribeToDocument<T>(collectionPath: string, docId: string, setData: (data: T | null) => void) {
     const pathParts = collectionPath.split('/');
-    const listener = async () => {
-        let docData: any | null = null;
-        if (pathParts.length === 1) {
-            docData = await idbService.get(collectionPath, docId);
-        } else if (pathParts.length === 3 && pathParts[0] === 'sessions' && pathParts[2] === 'games') {
-             const session = await idbService.get<Session & {games: Game[]}>(pathParts[0], pathParts[1]);
-             docData = session?.games.find(g => g.id === docId) || null;
-        }
-        setData(docData ? fromDb(docData) : null);
+    const fullPath = `${collectionPath}/${docId}`;
+    
+    const listener = (docData: T | null) => {
+        setData(docData ? { ...docData } as T : null);
     };
 
-    const notificationPath = collectionPath;
-    if (!listeners.has(notificationPath)) listeners.set(notificationPath, new Set());
-    listeners.get(notificationPath)!.add(listener);
-    listener();
-    return () => listeners.get(notificationPath)?.delete(listener);
+    if (!listeners.has(fullPath)) listeners.set(fullPath, new Set());
+    listeners.get(fullPath)!.add(listener);
+    
+    let docData: any | null = null;
+    if (pathParts.length === 1) {
+        docData = (dbState as any)[pathParts[0]]?.find((d: any) => d.id === docId) || null;
+    } else if (pathParts.length === 3) {
+         const [parentCollection, parentId, subCollection] = pathParts;
+         if (parentCollection === 'sessions' && subCollection === 'games') {
+             const parentDoc = dbState.sessions.find(d => d.id === parentId);
+             docData = parentDoc?.games?.find((d: any) => d.id === docId) as T || null;
+        }
+    }
+    listener(docData);
+    
+    return () => listeners.get(fullPath)?.delete(listener);
 }
 
 export const addDocument = async (collectionName: string, data: any) => {
-    const newDoc = { ...data, id: generateId() };
-    await idbService.put(collectionName, toDb(newDoc));
-    await notify(collectionName);
+    const newDoc = { ...data, id: generateId(), createdAt: MockTimestamp.now() };
+    (dbState as any)[collectionName].push(newDoc);
+    await dbService.put(collectionName, serializeTimestamps(newDoc));
+    notify(collectionName);
     return { id: newDoc.id };
 };
 
 export const updateDocument = async (collectionName: string, docId: string, data: any) => {
-    const doc = await idbService.get<any>(collectionName, docId);
-    if (doc) {
-        const updatedDoc = { ...doc, ...data };
-        await idbService.put(collectionName, toDb(updatedDoc));
+    const collection = (dbState as any)[collectionName];
+    const docIndex = collection.findIndex((d: any) => d.id === docId);
+    if (docIndex > -1) {
+        const updatedDoc = { ...collection[docIndex], ...data };
+        collection[docIndex] = updatedDoc;
+        await dbService.put(collectionName, serializeTimestamps(updatedDoc));
         
+        notify(collectionName);
+        notify(`${collectionName}/${docId}`);
+
         if (collectionName === 'players') {
-            const sessions = await idbService.getAll<Session>('sessions');
-            for(const session of sessions) {
-                await enrichSessionPlayers(session);
-                await idbService.put('sessions', toDb(session));
-            }
-            await notify('sessions');
-            sessions.forEach(s => notify(`sessions/${s.id}`));
-        } else {
-            await notify(collectionName);
-             if (collectionName === 'sessions') {
-                await notify(`sessions/${docId}`);
-            }
+            dbState.sessions.forEach(s => enrichSessionPlayers(s, dbState.players));
+            await dbService.putAll('sessions', serializeTimestamps(dbState.sessions));
+            notify('sessions');
+            dbState.sessions.forEach(s => notify(`sessions/${s.id}`));
         }
     }
 };
 
 export const deleteDocument = async (collectionName: string, docId: string) => {
-    await idbService.remove(collectionName, docId);
-    await notify(collectionName);
+    const collection = (dbState as any)[collectionName];
+    const docIndex = collection.findIndex((d: any) => d.id === docId);
+    if (docIndex > -1) {
+        collection.splice(docIndex, 1);
+        await dbService.deleteItem(collectionName, docId);
+        notify(collectionName);
+    }
 };
 
 export const startSession = async (sessionName: string, selectedPlayers: Player[], coverImage?: string) => {
@@ -259,13 +277,14 @@ export const startSession = async (sessionName: string, selectedPlayers: Player[
         games: [],
         coverImage,
     };
-    await idbService.put('sessions', toDb(newSession));
-    await notify('sessions');
+    dbState.sessions.push(newSession);
+    await dbService.put('sessions', serializeTimestamps(newSession));
+    notify('sessions');
     return { id: newSession.id };
 };
 
 export const startGame = async (sessionId: string, gameData: any) => {
-    const session = await idbService.get<Session & { games: Game[] }>('sessions', sessionId);
+    const session = dbState.sessions.find(s => s.id === sessionId);
     if (!session) throw new Error("Session not found");
     const gameNumber = session.games.length + 1;
     const newGame: Game = {
@@ -276,106 +295,110 @@ export const startGame = async (sessionId: string, gameData: any) => {
         pointUpdates: []
     };
     session.games.push(newGame);
-    await idbService.put('sessions', toDb(session));
-    await notify('sessions');
-    await notify(`sessions/${sessionId}`);
-    await notify(`sessions/${sessionId}/games`);
+    await dbService.put('sessions', serializeTimestamps(session));
+    notify(`sessions`);
+    notify(`sessions/${sessionId}`);
+    notify(`sessions/${sessionId}/games`);
     return { id: newGame.id };
 };
 
 export const updateScoresTransaction = async (sessionId: string, gameId: string, scoresToAdd: { [p: string]: number }) => {
-    const session = await idbService.get<Session & { games: Game[] }>('sessions', sessionId);
+    const session = dbState.sessions.find(s => s.id === sessionId);
     const game = session?.games.find(g => g.id === gameId);
     if (!session || !game) throw new Error("Not found");
 
     for (const [pId, score] of Object.entries(scoresToAdd)) {
-        session.totalScores[pId] = (session.totalScores[pId] || 0) + score;
-        game.gameScores[pId] = (game.gameScores[pId] || 0) + score;
+        session.totalScores[pId] = (session.totalScores[pId] || 0) + Number(score);
+        game.gameScores[pId] = (game.gameScores[pId] || 0) + Number(score);
     }
     if (!game.pointUpdates) game.pointUpdates = [];
-    game.pointUpdates.push({ id: generateId(), scores: scoresToAdd, createdAt: MockTimestamp.now() as any });
-
-    await idbService.put('sessions', toDb(session));
-    await notify('sessions');
-    await notify(`sessions/${sessionId}`);
-    await notify(`sessions/${sessionId}/games`);
-    await notify(`sessions/${sessionId}/games/${gameId}`);
-    await notify(`sessions/${sessionId}/games/${gameId}/pointUpdates`);
+    game.pointUpdates.push({ id: generateId(), scores: scoresToAdd, createdAt: MockTimestamp.now() });
+    
+    await dbService.put('sessions', serializeTimestamps(session));
+    notify('sessions');
+    notify(`sessions/${sessionId}`);
+    notify(`sessions/${sessionId}/games`);
+    notify(`sessions/${sessionId}/games/${gameId}`);
+    notify(`sessions/${sessionId}/games/${gameId}/pointUpdates`);
 };
 
 export const undoLastUpdateTransaction = async (sessionId: string, gameId: string) => {
-    const session = fromDb(await idbService.get<Session & { games: Game[] }>('sessions', sessionId));
+    const session = dbState.sessions.find(s => s.id === sessionId);
     const game = session?.games.find(g => g.id === gameId);
     if (!session || !game || !game.pointUpdates || game.pointUpdates.length === 0) throw new Error("Cannot undo");
     
     const lastUpdate = game.pointUpdates.pop();
     if (lastUpdate && lastUpdate.scores) {
         for (const [pId, score] of Object.entries(lastUpdate.scores)) {
-            session.totalScores[pId] -= (score as number || 0);
-            game.gameScores[pId] -= (score as number || 0);
+            session.totalScores[pId] -= (Number(score) || 0);
+            game.gameScores[pId] -= (Number(score) || 0);
         }
     }
     
-    await idbService.put('sessions', toDb(session));
-    await notify('sessions');
-    await notify(`sessions/${sessionId}`);
-    await notify(`sessions/${sessionId}/games`);
-    await notify(`sessions/${sessionId}/games/${gameId}`);
-    await notify(`sessions/${sessionId}/games/${gameId}/pointUpdates`);
+    await dbService.put('sessions', serializeTimestamps(session));
+    notify('sessions');
+    notify(`sessions/${sessionId}`);
+    notify(`sessions/${sessionId}/games`);
+    notify(`sessions/${sessionId}/games/${gameId}`);
+    notify(`sessions/${sessionId}/games/${gameId}/pointUpdates`);
 };
 
 export const deleteGameTransaction = async (sessionId: string, gameId: string) => {
-    const session = fromDb(await idbService.get<Session & { games: Game[] }>('sessions', sessionId));
+    const session = dbState.sessions.find(s => s.id === sessionId);
     const gameIndex = session?.games.findIndex(g => g.id === gameId);
     if (!session || gameIndex === undefined || gameIndex < 0) throw new Error("Not found");
     
     const game = session.games[gameIndex];
     for(const [pId, score] of Object.entries(game.gameScores)) {
-        // FIX: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
-        session.totalScores[pId] -= (score as number || 0);
+        session.totalScores[pId] -= (Number(score) || 0);
     }
     session.games.splice(gameIndex, 1);
     
-    await idbService.put('sessions', toDb(session));
-    await notify('sessions');
-    await notify(`sessions/${sessionId}`);
-    await notify(`sessions/${sessionId}/games`);
+    await dbService.put('sessions', serializeTimestamps(session));
+    notify('sessions');
+    notify(`sessions/${sessionId}`);
+    notify(`sessions/${sessionId}/games`);
 };
 
 export const addPlayersToSessionTransaction = async (sessionId: string, newPlayers: Player[]) => {
-    const session = fromDb(await idbService.get<Session & { games: Game[] }>('sessions', sessionId));
+    const session = dbState.sessions.find(s => s.id === sessionId);
     if (!session) throw new Error("Not found");
     
     newPlayers.forEach(p => {
-        session.players.push(p);
-        session.totalScores[p.id] = 0;
-        session.games.forEach(g => {
-            g.gameScores[p.id] = 0;
-        });
+        if (!session.players.some(sp => sp.id === p.id)) {
+            session.players.push(p);
+            session.totalScores[p.id] = 0;
+            session.games.forEach(g => {
+                g.gameScores[p.id] = 0;
+            });
+        }
     });
     
-    await idbService.put('sessions', toDb(session));
-    await notify('sessions');
-    await notify(`sessions/${sessionId}`);
-    await notify(`sessions/${sessionId}/games`);
+    await dbService.put('sessions', serializeTimestamps(session));
+    notify('sessions');
+    notify(`sessions/${sessionId}`);
+    notify(`sessions/${sessionId}/games`);
 };
 
+
 export const deleteSession = async (sessionId: string) => {
-    await idbService.remove('sessions', sessionId);
-    await notify('sessions');
+    const sessionIndex = dbState.sessions.findIndex(s => s.id === sessionId);
+    if (sessionIndex > -1) {
+        dbState.sessions.splice(sessionIndex, 1);
+        await dbService.deleteItem('sessions', sessionId);
+        notify('sessions');
+    }
 };
 
 export const getAllGameNames = async (): Promise<string[]> => {
-    const sessions = await idbService.getAll<Session & { games: Game[] }>('sessions');
     const allNames = new Set<string>();
-    sessions.forEach(s => s.games.forEach(g => allNames.add(g.name)));
+    dbState.sessions.forEach(s => s.games.forEach(g => allNames.add(g.name)));
     return Array.from(allNames).sort();
 };
 
 export const getAllGames = async (): Promise<(Game & {sessionId: string, sessionName: string})[]> => {
-    const sessions = await idbService.getAll<Session & { games: Game[] }>('sessions');
     const allGames: (Game & {sessionId: string, sessionName: string})[] = [];
-    sessions.forEach(s => {
+    dbState.sessions.forEach(s => {
         s.games.forEach(g => {
             allGames.push({
                 ...g,
@@ -384,61 +407,94 @@ export const getAllGames = async (): Promise<(Game & {sessionId: string, session
             });
         });
     });
-    // FIX: Corrected invalid type conversion from Timestamp to Date. The runtime type is Date, but the defined type is Timestamp. Casting via 'unknown' resolves this.
-    return allGames.sort((a,b) => (a.createdAt as unknown as Date).getTime() - (b.createdAt as unknown as Date).getTime());
+    return allGames.sort((a,b) => a.createdAt.toMillis() - b.createdAt.toMillis());
 };
 
 export const exportData = async (): Promise<FullBackup> => {
-    const players = await idbService.getAll<Player>('players');
-    const categories = await idbService.getAll<Category>('categories');
-    const sessions = await idbService.getAll<Session & { games: Game[] }>('sessions');
-
     const backup: FullBackup = {
-        players: players.map(p => ({ ...p, _id: p.id })),
-        categories: categories.map(c => ({ ...c, _id: c.id })),
-        sessions: sessions.map(s => ({
-            ...s,
+        players: dbState.players.map(p => ({
+            _id: p.id,
+            name: p.name,
+            color: p.color,
+            avatar: p.avatar,
+            localAvatar: p.localAvatar
+        })),
+        categories: dbState.categories.map(c => ({
+            _id: c.id,
+            name: c.name
+        })),
+        sessions: dbState.sessions.map(s => ({
             _id: s.id,
-            // FIX: Corrected invalid type conversion from Timestamp to Date. The runtime type is Date, but the defined type is Timestamp. Casting via 'unknown' resolves this.
-            createdAt: (s.createdAt as unknown as Date).toISOString(),
+            name: s.name,
+            createdAt: s.createdAt.toDate().toISOString(),
+            players: s.players.map(({ id, name, color, avatar, localAvatar }) => ({ id, name, color, avatar, localAvatar })),
+            totalScores: s.totalScores,
+            coverImage: s.coverImage,
+            localCoverImage: s.localCoverImage,
             games: s.games.map(g => ({
-                ...g,
                 _id: g.id,
-                // FIX: Corrected invalid type conversion from Timestamp to Date. The runtime type is Date, but the defined type is Timestamp. Casting via 'unknown' resolves this.
-                createdAt: (g.createdAt as unknown as Date).toISOString(),
+                name: g.name,
+                categoryId: g.categoryId,
+                categoryName: g.categoryName,
+                gameNumber: g.gameNumber,
+                createdAt: g.createdAt.toDate().toISOString(),
+                gameScores: g.gameScores,
                 pointUpdates: (g.pointUpdates || []).map((pu: PointUpdate) => ({
-                    ...pu,
                     _id: pu.id,
-                    createdAt: (pu.createdAt as any).toDate().toISOString(),
+                    scores: pu.scores,
+                    createdAt: pu.createdAt.toDate().toISOString(),
                 }))
             }))
-        })) as any,
+        }))
     };
     return JSON.parse(JSON.stringify(backup));
 };
 
 export const importData = async (data: FullBackup) => {
-    await idbService.clear('players');
-    await idbService.clear('categories');
-    await idbService.clear('sessions');
+    // 1. Clear everything
+    await dbService.clear('players');
+    await dbService.clear('categories');
+    await dbService.clear('sessions');
 
-    const playersToStore = data.players.map(p => ({ ...p, id: p._id }));
-    const categoriesToStore = data.categories.map(c => ({ ...c, id: c._id }));
-    const sessionsToStore = data.sessions.map(s => {
+    // 2. Load and transform data for in-memory state
+    const newPlayers = data.players.map(p => ({ ...p, id: p._id }));
+    const newCategories = data.categories.map(c => ({ ...c, id: c._id }));
+    const newSessions = data.sessions.map(s => {
         const games = (s.games || []).map(g => ({
             ...g,
             id: g._id,
-            createdAt: new Date(g.createdAt),
-            pointUpdates: (g.pointUpdates || []).map(pu => ({ ...pu, id: pu._id, createdAt: new Date(pu.createdAt) }))
+            createdAt: MockTimestamp.fromDate(new Date(g.createdAt)),
+            pointUpdates: (g.pointUpdates || []).map(pu => ({
+                ...pu,
+                id: pu._id,
+                createdAt: MockTimestamp.fromDate(new Date(pu.createdAt))
+            }))
         }));
-        return { ...s, id: s._id, createdAt: new Date(s.createdAt), games };
+         const sessionWithGames = {
+            ...s,
+            id: s._id,
+            createdAt: MockTimestamp.fromDate(new Date(s.createdAt)),
+            games,
+        };
+        enrichSessionPlayers(sessionWithGames, newPlayers);
+        return sessionWithGames;
     });
 
-    await idbService.bulkPut('players', playersToStore);
-    await idbService.bulkPut('categories', categoriesToStore);
-    await idbService.bulkPut('sessions', sessionsToStore);
-    
-    await notify('players');
-    await notify('categories');
-    await notify('sessions');
+    dbState.players = newPlayers;
+    dbState.categories = newCategories;
+    dbState.sessions = newSessions;
+
+    // 3. Persist the new state to IndexedDB (with Dates instead of MockTimestamps)
+    await dbService.putAll('players', serializeTimestamps(dbState.players));
+    await dbService.putAll('categories', serializeTimestamps(dbState.categories));
+    await dbService.putAll('sessions', serializeTimestamps(dbState.sessions));
+
+    // 4. Notify all listeners to refresh views
+    notify('players');
+    notify('categories');
+    notify('sessions');
+    dbState.sessions.forEach(s => {
+        notify(`sessions/${s.id}`);
+        notify(`sessions/${s.id}/games`);
+    });
 };

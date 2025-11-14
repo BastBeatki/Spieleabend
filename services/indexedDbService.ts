@@ -1,127 +1,108 @@
+// services/indexedDbService.ts
 
 const DB_NAME = 'SpieleabendScoreboardDB';
 const DB_VERSION = 1;
+const STORES = ['players', 'categories', 'sessions'];
+
+let dbPromise: Promise<IDBDatabase> | null = null;
 
 const openDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    if (dbPromise) {
+        return dbPromise;
+    }
+    dbPromise = new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains('players')) {
-        db.createObjectStore('players', { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains('categories')) {
-        db.createObjectStore('categories', { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains('sessions')) {
-        db.createObjectStore('sessions', { keyPath: 'id' });
-      }
-    };
+        request.onerror = () => {
+            console.error('IndexedDB error:', request.error);
+            reject('Error opening DB');
+        };
 
-    request.onsuccess = (event) => {
-      resolve((event.target as IDBOpenDBRequest).result);
-    };
+        request.onsuccess = () => {
+            resolve(request.result);
+        };
 
-    request.onerror = (event) => {
-      console.error('IndexedDB error:', (event.target as IDBOpenDBRequest).error);
-      reject((event.target as IDBOpenDBRequest).error);
-    };
-  });
-};
-
-const get = <T>(storeName: string, key: string): Promise<T | undefined> => {
-  return openDB().then(db => {
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readonly');
-      const store = transaction.objectStore(storeName);
-      const request = store.get(key);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+        request.onupgradeneeded = (event) => {
+            const db = (event.target as IDBOpenDBRequest).result;
+            STORES.forEach(storeName => {
+                if (!db.objectStoreNames.contains(storeName)) {
+                    db.createObjectStore(storeName, { keyPath: 'id' });
+                }
+            });
+        };
     });
-  });
+    return dbPromise;
 };
 
-const getAll = <T>(storeName: string): Promise<T[]> => {
-  return openDB().then(db => {
+export const getAll = async <T>(storeName: string): Promise<T[]> => {
+    const db = await openDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readonly');
-      const store = transaction.objectStore(storeName);
-      const request = store.getAll();
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+        const transaction = db.transaction(storeName, 'readonly');
+        const store = transaction.objectStore(storeName);
+        const request = store.getAll();
+
+        request.onerror = () => reject(`Error fetching from ${storeName}`);
+        request.onsuccess = () => resolve(request.result);
     });
-  });
 };
 
-const put = (storeName: string, value: any): Promise<void> => {
-  return openDB().then(db => {
+export const put = async <T>(storeName: string, item: T): Promise<void> => {
+    const db = await openDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readwrite');
-      const store = transaction.objectStore(storeName);
-      const request = store.put(value);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-      transaction.oncomplete = () => db.close();
-    });
-  });
-};
-
-const remove = (storeName: string, key: string): Promise<void> => {
-  return openDB().then(db => {
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readwrite');
-      const store = transaction.objectStore(storeName);
-      const request = store.delete(key);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-       transaction.oncomplete = () => db.close();
-    });
-  });
-};
-
-const clear = (storeName: string): Promise<void> => {
-    return openDB().then(db => {
-      return new Promise<void>((resolve, reject) => {
         const transaction = db.transaction(storeName, 'readwrite');
         const store = transaction.objectStore(storeName);
-        const request = store.clear();
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
-        transaction.oncomplete = () => db.close();
-      });
+        store.put(item);
+        
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => {
+            console.error(`Transaction error on putting item in ${storeName}:`, transaction.error);
+            reject(`Transaction error on putting item in ${storeName}`);
+        };
     });
 };
 
-const bulkPut = (storeName: string, values: any[]): Promise<void> => {
-    if (values.length === 0) return Promise.resolve();
-    return openDB().then(db => {
-        return new Promise<void>((resolve, reject) => {
-            const transaction = db.transaction(storeName, 'readwrite');
-            const store = transaction.objectStore(storeName);
-            
-            transaction.oncomplete = () => {
-                db.close();
-                resolve();
-            };
-            
-            transaction.onerror = (event) => {
-                console.error('Bulk put transaction error', event);
-                reject(transaction.error);
-            };
-
-            values.forEach(value => {
-                store.put(value);
-            });
-        });
+export const putAll = async <T>(storeName: string, items: T[]): Promise<void> => {
+    if (items.length === 0) return Promise.resolve();
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        items.forEach(item => store.put(item));
+        
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => {
+            console.error(`Transaction error on putting all items in ${storeName}:`, transaction.error);
+            reject(`Transaction error on putting all items in ${storeName}`);
+        };
     });
 };
 
-export const idbService = {
-  get,
-  getAll,
-  put,
-  remove,
-  clear,
-  bulkPut,
+export const deleteItem = async (storeName: string, key: string): Promise<void> => {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        store.delete(key);
+
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => {
+            console.error(`Transaction error on deleting item from ${storeName}:`, transaction.error);
+            reject(`Transaction error on deleting item from ${storeName}`);
+        };
+    });
+};
+
+export const clear = async (storeName: string): Promise<void> => {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        store.clear();
+
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => {
+            console.error(`Transaction error on clearing store ${storeName}:`, transaction.error);
+            reject(`Transaction error on clearing store ${storeName}`);
+        };
+    });
 };
