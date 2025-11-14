@@ -92,25 +92,55 @@ const notify = (path: string) => {
     if (!cbs) return;
 
     const pathParts = path.split('/');
-    if (pathParts.length > 1) { // subcollection or document
-        const [collectionName, docId, subCollectionName, _subDocId, subSubCollectionName] = pathParts;
-        
-        if (subSubCollectionName) { // sub-sub-collection e.g. sessions/sid/games/gid/pointUpdates
-            const parentSession = dbState.sessions.find(s => s.id === docId);
-            const parentGame = parentSession?.games.find(g => g.id === _subDocId);
-            const data = parentGame?.pointUpdates ?? [];
+    const pathLength = pathParts.length;
+
+    switch (pathLength) {
+        // Root collection: 'players'
+        case 1: {
+            const [collectionName] = pathParts;
+            const data = (dbState as any)[collectionName] || [];
             cbs.forEach(cb => cb(data));
-        } else if (subCollectionName) { // subcollection
-            const parentDoc = (dbState as any)[collectionName]?.find((d: any) => d.id === docId);
-            const data = parentDoc ? parentDoc.games : [];
-            cbs.forEach(cb => cb(data));
-        } else { // document
-             const parentDoc = (dbState as any)[collectionName]?.find((d: any) => d.id === docId);
-             cbs.forEach(cb => cb(parentDoc || null));
+            break;
         }
-    } else { // root collection
-        const data = (dbState as any)[path] || [];
-        cbs.forEach(cb => cb(data));
+        // Document in root collection: 'sessions/sid'
+        case 2: {
+            const [collectionName, docId] = pathParts;
+            const collection = (dbState as any)[collectionName];
+            const doc = collection?.find((d: any) => d.id === docId);
+            cbs.forEach(cb => cb(doc || null));
+            break;
+        }
+        // Subcollection: 'sessions/sid/games'
+        case 3: {
+            const [collectionName, docId, subCollectionName] = pathParts;
+            if (collectionName === 'sessions' && subCollectionName === 'games') {
+                const session = dbState.sessions.find(s => s.id === docId);
+                const data = session?.games ?? [];
+                cbs.forEach(cb => cb(data));
+            }
+            break;
+        }
+        // Document in subcollection: 'sessions/sid/games/gid'
+        case 4: {
+            const [collectionName, docId, subCollectionName, subDocId] = pathParts;
+            if (collectionName === 'sessions' && subCollectionName === 'games') {
+                const session = dbState.sessions.find(s => s.id === docId);
+                const game = session?.games.find(g => g.id === subDocId);
+                cbs.forEach(cb => cb(game || null));
+            }
+            break;
+        }
+        // Sub-sub-collection: 'sessions/sid/games/gid/pointUpdates'
+        case 5: {
+            const [collectionName, docId, subCollectionName, subDocId, subSubCollectionName] = pathParts;
+            if (collectionName === 'sessions' && subCollectionName === 'games' && subSubCollectionName === 'pointUpdates') {
+                const session = dbState.sessions.find(s => s.id === docId);
+                const game = session?.games.find(g => g.id === subDocId);
+                const data = game?.pointUpdates ?? [];
+                cbs.forEach(cb => cb(data));
+            }
+            break;
+        }
     }
 };
 
