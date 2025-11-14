@@ -28,7 +28,11 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
     
     const enrichedSessionPlayers: SessionPlayer[] = useMemo(() => {
         const globalPlayerMap = new Map(players.map(p => [p.id, p]));
-        return session.players.map((sessionPlayer: SessionPlayer) => {
+        // FIX: The errors indicate that type information is being lost, likely from the mock
+        // service returning `any`. Casting `session.players` back to `SessionPlayer[]`
+        // allows TypeScript to correctly infer the types for `sessionPlayer` and `globalPlayer`,
+        // resolving the property access errors. This also fixes cascading type errors later in the component.
+        return (session.players as SessionPlayer[]).map((sessionPlayer: SessionPlayer) => {
             const globalPlayer = globalPlayerMap.get(sessionPlayer.id);
             if (globalPlayer) {
                 // Enrich session player with potentially updated global data

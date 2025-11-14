@@ -1,4 +1,4 @@
-import { mockBackupData } from './mockData';
+
 import { Player, Category, Session, Game, PointUpdate, FullBackup, Timestamp as ITimestamp, SessionPlayer } from '../types';
 import * as dbService from './indexedDbService';
 
@@ -75,16 +75,10 @@ const loadDataFromDb = async () => {
     const categories = await dbService.getAll<Category>('categories');
     const sessions = await dbService.getAll<any>('sessions');
 
-    if (players.length === 0 && categories.length === 0 && sessions.length === 0) {
-        // First time load, populate from mockData
-        await importData(mockBackupData);
-        return; // importData will recall this function's logic
-    } else {
-        dbState.players = players;
-        dbState.categories = categories;
-        // Convert Dates back to MockTimestamps after loading from DB
-        dbState.sessions = deserializeTimestamps(sessions);
-    }
+    dbState.players = players;
+    dbState.categories = categories;
+    // Convert Dates back to MockTimestamps after loading from DB
+    dbState.sessions = deserializeTimestamps(sessions);
 };
 
 const notify = (path: string) => {
