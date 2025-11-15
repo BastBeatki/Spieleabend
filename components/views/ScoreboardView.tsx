@@ -294,7 +294,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                             <Legend wrapperStyle={{ color: '#cbd5e1' }} />
                             {enrichedSessionPlayers.map(p => (
                                 <React.Fragment key={p.id}>
-                                    <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')})`} />
+                                    <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')})`} hide />
                                     <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 6, stroke: 'rgba(255,255,255,0.3)', strokeWidth: 4}} />
                                 </React.Fragment>
                             ))}
