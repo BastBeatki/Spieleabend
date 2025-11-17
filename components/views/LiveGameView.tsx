@@ -32,7 +32,8 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
         // service returning `any`. Casting `session.players` back to `SessionPlayer[]`
         // allows TypeScript to correctly infer the types for `sessionPlayer` and `globalPlayer`,
         // resolving the property access errors. This also fixes cascading type errors later in the component.
-        // FIX: Changed sessionPlayer type to any to resolve incorrect 'unknown' type inference.
+        // By correctly typing `sessionPlayer`, we resolve the incorrect 'unknown' type inference downstream.
+        // FIX: Change sessionPlayer type to any to handle cases where type information is lost from the mock service.
         return (session.players as SessionPlayer[]).map((sessionPlayer: any) => {
             const globalPlayer = globalPlayerMap.get(sessionPlayer.id);
             if (globalPlayer) {
@@ -57,6 +58,20 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
         });
     }, [session.players, players]);
 
+    const layoutPlayers = useMemo(() => {
+        const schuetti = enrichedSessionPlayers.find(p => p.name === 'Schütti');
+        const bastBeat = enrichedSessionPlayers.find(p => p.name === 'BastBeat');
+
+        if (schuetti && bastBeat) {
+            const otherPlayers = enrichedSessionPlayers.filter(
+                p => p.id !== schuetti.id && p.id !== bastBeat.id
+            );
+            return [schuetti, ...otherPlayers, bastBeat];
+        }
+
+        return enrichedSessionPlayers;
+    }, [enrichedSessionPlayers]);
+
 
     const sortedPlayers = useMemo(() =>
         [...enrichedSessionPlayers].sort((a, b) => (game.gameScores[b.id] || 0) - (game.gameScores[a.id] || 0)),
@@ -71,12 +86,14 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
             const dataPoint: any = { name: `Update ${index + 1}` };
             if (chartMode === 'cumulative') {
                 enrichedSessionPlayers.forEach(p => {
-                    cumulativeScores[p.id] = (cumulativeScores[p.id] || 0) + (update.scores?.[p.id] || 0);
+                    // FIX: Cast score to Number to handle potential `unknown` type from mock data.
+                    cumulativeScores[p.id] = (cumulativeScores[p.id] || 0) + (Number(update.scores?.[p.id]) || 0);
                     dataPoint[p.name] = cumulativeScores[p.id];
                 });
             } else { // 'perUpdate'
                 enrichedSessionPlayers.forEach(p => {
-                    dataPoint[p.name] = update.scores?.[p.id] || 0;
+                    // FIX: Cast score to Number to handle potential `unknown` type from mock data.
+                    dataPoint[p.name] = Number(update.scores?.[p.id]) || 0;
                 });
             }
             data.push(dataPoint);
@@ -135,7 +152,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                     </div>
                     <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800">
                         <h3 className="text-xl font-semibold mb-4">Punkte hinzufügen</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">{enrichedSessionPlayers.map(p => (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">{layoutPlayers.map(p => (
                              <div key={p.id} className="bg-slate-800/80 p-4 rounded-lg flex flex-col items-center gap-2">
                                 <label className="font-bold text-lg" style={{ color: p.color }}>{p.name}</label>
                                 <div className="flex items-center justify-center gap-3 w-full">
@@ -189,7 +206,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                                 <Legend wrapperStyle={{ color: '#cbd5e1' }} />
                                 {enrichedSessionPlayers.map(p => (
                                     <React.Fragment key={p.id}>
-                                        <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')})`} hide />
+                                        <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')})`} legendType="none" />
                                         <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 6, stroke: 'rgba(255,255,255,0.3)', strokeWidth: 4}} />
                                     </React.Fragment>
                                 ))}

@@ -10,6 +10,20 @@ interface BuzzerViewProps {
 export const BuzzerView: React.FC<BuzzerViewProps> = ({ players, onClose }) => {
   const [buzzedPlayer, setBuzzedPlayer] = useState<SessionPlayer | null>(null);
 
+  const layoutPlayers = useMemo(() => {
+    const schuetti = players.find(p => p.name === 'Schütti');
+    const bastBeat = players.find(p => p.name === 'BastBeat');
+
+    if (schuetti && bastBeat) {
+        const otherPlayers = players.filter(
+            p => p.id !== schuetti.id && p.id !== bastBeat.id
+        );
+        return [schuetti, ...otherPlayers, bastBeat];
+    }
+
+    return players;
+  }, [players]);
+
   const handleBuzz = (player: SessionPlayer) => {
     if (!buzzedPlayer) {
       setBuzzedPlayer(player);
@@ -22,7 +36,7 @@ export const BuzzerView: React.FC<BuzzerViewProps> = ({ players, onClose }) => {
   
   const TwoPlayerLayout = () => (
     <div className="flex flex-col md:flex-row gap-4 h-full">
-        {players.map(player => (
+        {layoutPlayers.map(player => (
             <div key={player.id} className="flex-1 h-full w-full rounded-2xl overflow-hidden">
                 <button
                     onClick={() => handleBuzz(player)}
@@ -54,7 +68,7 @@ export const BuzzerView: React.FC<BuzzerViewProps> = ({ players, onClose }) => {
       
     return (
         <div className={`grid gap-4 h-full ${gridClasses}`}>
-            {players.map(player => (
+            {layoutPlayers.map(player => (
                  <button
                     key={player.id}
                     onClick={() => handleBuzz(player)}
