@@ -119,7 +119,7 @@ export const deleteDocument = async (collectionName: string, docId: string) => {
 };
 
 // Specific Logic
-export const startSession = async (sessionName: string, selectedPlayers: Player[]) => {
+export const startSession = async (sessionName: string, selectedPlayers: Player[], coverImage?: string) => {
     const totalScores = selectedPlayers.reduce((acc, p) => ({ ...acc, [p.id]: 0 }), {});
     const sessionPlayers = selectedPlayers.map(({ id, name, color }) => ({ id, name, color }));
     
@@ -127,6 +127,7 @@ export const startSession = async (sessionName: string, selectedPlayers: Player[
         name: sessionName,
         players: sessionPlayers,
         totalScores,
+        coverImage,
         createdAt: Timestamp.now()
     });
 };
@@ -314,18 +315,18 @@ export const exportData = async (): Promise<FullBackup> => {
     };
 
     for (const sessionDoc of sessionsSnapshot.docs) {
-        const sessionData = {...sessionDoc.data(), _id: sessionDoc.id};
+        const sessionData = {...sessionDoc.data(), _id: sessionDoc.id} as any;
         sessionData.createdAt = (sessionData.createdAt as Timestamp).toDate().toISOString();
 
         const gamesSnapshot = await getDocs(collection(db, sessionDoc.ref.path, 'games'));
         const games = [];
         for(const gameDoc of gamesSnapshot.docs) {
-            const gameData = {...gameDoc.data(), _id: gameDoc.id};
+            const gameData = {...gameDoc.data(), _id: gameDoc.id} as any;
             gameData.createdAt = (gameData.createdAt as Timestamp).toDate().toISOString();
 
             const updatesSnapshot = await getDocs(collection(db, gameDoc.ref.path, 'pointUpdates'));
             gameData.pointUpdates = updatesSnapshot.docs.map(updateDoc => {
-                const updateData = {...updateDoc.data(), _id: updateDoc.id};
+                const updateData = {...updateDoc.data(), _id: updateDoc.id} as any;
                 updateData.createdAt = (updateData.createdAt as Timestamp).toDate().toISOString();
                 return updateData;
             });
