@@ -1,4 +1,3 @@
-
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, User, Auth } from 'firebase/auth';
 import { 
@@ -51,6 +50,16 @@ export const onAuth = (callback: (user: User | null, error?: Error) => void) => 
 };
 
 const getBasePath = () => `artifacts/${appId}/users/${userId}`;
+
+// Helper zum sicheren Erstellen von Timestamps
+const safeTimestamp = (dateString: any) => {
+    try {
+        const d = new Date(dateString);
+        return isNaN(d.getTime()) ? Timestamp.now() : Timestamp.fromDate(d);
+    } catch (e) {
+        return Timestamp.now();
+    }
+};
 
 // Generic Collection Functions
 export function subscribeToCollection<T>(collectionName: string, setData: (data: T[]) => void, options: { orderBy?: string | [string, "asc" | "desc"] } = {}) {
@@ -252,52 +261,58 @@ export const addPlayersToSessionTransaction = async (sessionId: string, newPlaye
 
 export const deleteSession = async (sessionId: string) => {
     if (!userId) throw new Error("User not authenticated");
-    const sessionRef = doc(db, `${getBasePath()}/sessions/${sessionId}`);
-    const gamesSnapshot = await getDocs(collection(sessionRef, 'games'));
-    
-    for (const gameDoc of gamesSnapshot.docs) {
-        const updatesSnapshot = await getDocs(collection(gameDoc.ref, 'pointUpdates'));
-        if (!updatesSnapshot.empty) {
-            const batch = writeBatch(db);
-            updatesSnapshot.forEach(updDoc => batch.delete(updDoc.ref));
-            await batch.commit();
+    try {
+        const sessionRef = doc(db, `${getBasePath()}/sessions/${sessionId}`);
+        const gamesSnapshot = await getDocs(collection(sessionRef, 'games'));
+        
+        for (const gameDoc of gamesSnapshot.docs) {
+            const updatesSnapshot = await getDocs(collection(gameDoc.ref, 'pointUpdates'));
+            if (!updatesSnapshot.empty) {
+                const batch = writeBatch(db);
+                updatesSnapshot.forEach(updDoc => batch.delete(updDoc.ref));
+                await batch.commit();
+            }
+            await deleteDoc(gameDoc.ref);
         }
-        await deleteDoc(gameDoc.ref);
+        await deleteDoc(sessionRef);
+    } catch (e) {
+        console.warn("DeleteSession failed (vllt schon leer):", e);
     }
-    
-    await deleteDoc(sessionRef);
 };
-
 
 export const getAllGameNames = async (): Promise<string[]> => {
     if (!userId) return [];
     const allNames = new Set<string>();
-    const sessionsSnapshot = await getDocs(collection(db, `${getBasePath()}/sessions`));
-    for (const sessionDoc of sessionsSnapshot.docs) {
-        const gamesSnapshot = await getDocs(collection(sessionDoc.ref, 'games'));
-        gamesSnapshot.forEach(gameDoc => {
-            allNames.add(gameDoc.data().name);
-        });
-    }
+    try {
+        const sessionsSnapshot = await getDocs(collection(db, `${getBasePath()}/sessions`));
+        for (const sessionDoc of sessionsSnapshot.docs) {
+            const gamesSnapshot = await getDocs(collection(sessionDoc.ref, 'games'));
+            gamesSnapshot.forEach(gameDoc => {
+                allNames.add(gameDoc.data().name);
+            });
+        }
+    } catch (e) { console.error(e); }
     return Array.from(allNames).sort();
 };
 
 export const getAllGames = async (): Promise<(Game & {sessionId: string, sessionName: string})[]> => {
     if (!userId) return [];
     const games: (Game & {sessionId: string, sessionName: string})[] = [];
-    const sessionsSnapshot = await getDocs(collection(db, `${getBasePath()}/sessions`));
-    for (const sessionDoc of sessionsSnapshot.docs) {
-        const session = sessionDoc.data();
-        const gamesSnapshot = await getDocs(collection(sessionDoc.ref, 'games'));
-        gamesSnapshot.forEach(gameDoc => {
-            games.push({ 
-                id: gameDoc.id, 
-                ...gameDoc.data(), 
-                sessionId: sessionDoc.id, 
-                sessionName: session.name 
-            } as any);
-        });
-    }
+    try {
+        const sessionsSnapshot = await getDocs(collection(db, `${getBasePath()}/sessions`));
+        for (const sessionDoc of sessionsSnapshot.docs) {
+            const session = sessionDoc.data();
+            const gamesSnapshot = await getDocs(collection(sessionDoc.ref, 'games'));
+            gamesSnapshot.forEach(gameDoc => {
+                games.push({ 
+                    id: gameDoc.id, 
+                    ...gameDoc.data(), 
+                    sessionId: sessionDoc.id, 
+                    sessionName: session.name 
+                } as any);
+            });
+        }
+    } catch (e) { console.error(e); }
     return games.sort((a,b) => (a.createdAt as Timestamp).toMillis() - (b.createdAt as Timestamp).toMillis());
 };
 
@@ -341,63 +356,71 @@ export const exportData = async (): Promise<FullBackup> => {
 export const importData = async (data: FullBackup) => {
     if (!userId) throw new Error("User not authenticated");
 
-    // 1. Delete all existing data
-    const collectionsToDelete = ['players', 'categories', 'sessions'];
-    for (const collName of collectionsToDelete) {
-        const snapshot = await getDocs(collection(db, `${getBasePath()}/${collName}`));
-        for (const docToDelete of snapshot.docs) {
-            if (collName === 'sessions') {
-                await deleteSession(docToDelete.id); // Handles subcollections
-            } else {
-                await deleteDoc(docToDelete.ref);
-            }
+    console.log("Starte Import-Prozess...");
+
+    // 1. Altdaten löschen (vorsichtig)
+    try {
+        const snapshot = await getDocs(collection(db, `${getBasePath()}/sessions`));
+        for (const docToDel of snapshot.docs) {
+            await deleteSession(docToDel.id);
         }
+        // Spieler und Kategorien einzeln löschen (Batch-Sicherheit)
+        for (const coll of ['players', 'categories']) {
+            const snap = await getDocs(collection(db, `${getBasePath()}/${coll}`));
+            for (const d of snap.docs) await deleteDoc(d.ref);
+        }
+    } catch (e) {
+        console.warn("Löschen fehlgeschlagen (evtl. leere DB), fahre fort...");
     }
 
-    // 2. Import new data
-    const batch = writeBatch(db);
-    data.players.forEach(p => {
-        const docRef = doc(db, `${getBasePath()}/players`, p._id);
+    // 2. Spieler & Kategorien einzeln setzen (kein Batch-Limit)
+    console.log("Importiere Spieler...");
+    for (const p of data.players) {
         const { _id, ...playerData } = p;
-        batch.set(docRef, playerData);
-    });
-    data.categories.forEach(c => {
-        const docRef = doc(db, `${getBasePath()}/categories`, c._id);
+        await setDoc(doc(db, `${getBasePath()}/players`, _id), playerData);
+    }
+
+    console.log("Importiere Kategorien...");
+    for (const c of data.categories) {
         const { _id, ...catData } = c;
-        batch.set(docRef, catData);
-    });
-    await batch.commit();
+        await setDoc(doc(db, `${getBasePath()}/categories`, _id), catData);
+    }
 
+    // 3. Sessions, Games und PointUpdates
+    console.log("Importiere Sessions...");
     for (const session of data.sessions) {
-        const { _id, games, ...sessionData } = session;
-        const sessionRef = doc(db, `${getBasePath()}/sessions`, _id);
-        await setDoc(sessionRef, {
-            ...sessionData,
-            createdAt: Timestamp.fromDate(new Date(sessionData.createdAt))
-        });
+        try {
+            const { _id, games, ...sessionData } = session;
+            const sessionRef = doc(db, `${getBasePath()}/sessions`, _id);
+            await setDoc(sessionRef, {
+                ...sessionData,
+                createdAt: safeTimestamp(sessionData.createdAt)
+            });
 
-        if (games) {
-            for(const game of games) {
-                const {_id: gameId, pointUpdates, ...gameData} = game;
-                const gameRef = doc(collection(sessionRef, 'games'), gameId);
-                await setDoc(gameRef, {
-                    ...gameData,
-                    createdAt: Timestamp.fromDate(new Date(gameData.createdAt))
-                });
-
-                if (pointUpdates) {
-                    const updatesBatch = writeBatch(db);
-                    pointUpdates.forEach(update => {
-                         const {_id: updateId, ...updateData} = update;
-                         const updateRef = doc(collection(gameRef, 'pointUpdates'), updateId);
-                         updatesBatch.set(updateRef, {
-                             ...updateData,
-                             createdAt: Timestamp.fromDate(new Date(updateData.createdAt))
-                         });
+            if (games) {
+                for (const game of games) {
+                    const { _id: gameId, pointUpdates, ...gameData } = game;
+                    const gameRef = doc(collection(sessionRef, 'games'), gameId);
+                    await setDoc(gameRef, {
+                        ...gameData,
+                        createdAt: safeTimestamp(gameData.createdAt)
                     });
-                    await updatesBatch.commit();
+
+                    if (pointUpdates && pointUpdates.length > 0) {
+                        for (const update of pointUpdates) {
+                            const { _id: updateId, ...updateData } = update;
+                            const updateRef = doc(collection(gameRef, 'pointUpdates'), updateId);
+                            await setDoc(updateRef, {
+                                ...updateData,
+                                createdAt: safeTimestamp(updateData.createdAt)
+                            });
+                        }
+                    }
                 }
             }
+        } catch (sessionErr) {
+            console.error(`Fehler bei Session ${_id}:`, sessionErr);
         }
     }
+    console.log("Import abgeschlossen!");
 };
