@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Player, Category, Session, Game, PointUpdate, View, FullBackup } from './types';
 import * as fb from './services/firebaseService';
@@ -11,7 +10,8 @@ import { LiveGameView } from './components/views/LiveGameView';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
 
 const App: React.FC = () => {
-    const [view, setView] = useState<View>('loading');
+    // FIX: Wir starten direkt auf 'home' statt auf 'loading'
+    const [view, setView] = useState<View>('home');
     const [players, setPlayers] = useState<Player[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [sessions, setSessions] = useState<Session[]>([]);
@@ -30,28 +30,24 @@ const App: React.FC = () => {
         setUnsubscribes([]);
     }, [unsubscribes]);
 
-    useEffect(() => {
-        const authUnsubscribe = fb.onAuth(async (user, error) => {
-            if (error) {
-                // This error won't happen in the new local-only mode.
-                console.error("Authentication failed:", error);
-            }
+    // Diese Funktion lädt die Daten, sobald wir eine Verbindung haben
+    const setupSubscriptions = useCallback(() => {
+        clearSubscriptions();
+        const newUnsubscribes: (() => void)[] = [];
+        newUnsubscribes.push(fb.subscribeToCollection<Player>('players', setPlayers, { orderBy: 'name' }));
+        newUnsubscribes.push(fb.subscribeToCollection<Category>('categories', setCategories, { orderBy: 'name' }));
+        newUnsubscribes.push(fb.subscribeToCollection<Session>('sessions', setSessions, { orderBy: ['createdAt', 'desc'] }));
+        fb.getAllGameNames().then(setAllGameNames);
+        setUnsubscribes(newUnsubscribes);
+    }, [clearSubscriptions]);
 
+    useEffect(() => {
+        // Wir starten die Abos sofort, ohne auf den Auth-Status zu warten
+        setupSubscriptions();
+
+        const authUnsubscribe = fb.onAuth(async (user, error) => {
             if (user) {
-                clearSubscriptions();
-                const newUnsubscribes: (() => void)[] = [];
-                newUnsubscribes.push(fb.subscribeToCollection<Player>('players', setPlayers, { orderBy: 'name' }));
-                newUnsubscribes.push(fb.subscribeToCollection<Category>('categories', setCategories, { orderBy: 'name' }));
-                newUnsubscribes.push(fb.subscribeToCollection<Session>('sessions', setSessions, { orderBy: ['createdAt', 'desc'] }));
-                
-                fb.getAllGameNames().then(setAllGameNames);
-                
-                setUnsubscribes(newUnsubscribes);
-                if(view === 'loading') {
-                    setView('home');
-                }
-            } else {
-                 setView('loading');
+                setupSubscriptions();
             }
         });
 
@@ -72,18 +68,12 @@ const App: React.FC = () => {
         if (newView === 'scoreboard' && data.sessionId) {
             newUnsubscribes.push(fb.subscribeToDocument<Session>('sessions', data.sessionId, setActiveSession));
             newUnsubscribes.push(fb.subscribeToSubCollection<Game>(`sessions/${data.sessionId}/games`, setActiveSessionGames, { orderBy: ['gameNumber', 'asc'] }));
-        } else {
-            setActiveSession(null);
-            setActiveSessionGames([]);
         }
 
         if (newView === 'liveGame' && data.sessionId && data.gameId) {
             newUnsubscribes.push(fb.subscribeToDocument<Session>('sessions', data.sessionId, setActiveSession));
             newUnsubscribes.push(fb.subscribeToDocument<Game>(`sessions/${data.sessionId}/games`, data.gameId, setActiveGame));
             newUnsubscribes.push(fb.subscribeToSubCollection<PointUpdate>(`sessions/${data.sessionId}/games/${data.gameId}/pointUpdates`, setActiveGameUpdates, { orderBy: ['createdAt', 'asc'] }));
-        } else {
-            setActiveGame(null);
-            setActiveGameUpdates([]);
         }
 
         setUnsubscribes(newUnsubscribes);
@@ -91,7 +81,7 @@ const App: React.FC = () => {
     };
 
     const sortedActiveSessionGames = useMemo(() => 
-        [...activeSessionGames].sort((a, b) => b.gameNumber - a.gameNumber),
+        ([...activeSessionGames] || []).sort((a, b) => b.gameNumber - a.gameNumber),
         [activeSessionGames]
     );
 
@@ -126,7 +116,7 @@ const App: React.FC = () => {
                     navigate={navigate}
                 />
             default:
-                return <LoadingSpinner text="Scoreboard wird geladen..." />;
+                return <HomeView sessions={sessions} navigate={navigate} setView={setView} />;
         }
     };
 
