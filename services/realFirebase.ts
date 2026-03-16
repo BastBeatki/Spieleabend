@@ -49,7 +49,7 @@ export const onAuth = (callback: (user: User | null, error?: Error) => void) => 
     });
 };
 
-const getBasePath = () => `artifacts/${appId}/users/${userId}`;
+const getBasePath = () => `artifacts/${appId}/shared/scoreboard_main`;
 
 // Helper zum sicheren Erstellen von Timestamps
 const safeTimestamp = (dateString: any) => {
