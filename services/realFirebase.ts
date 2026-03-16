@@ -354,7 +354,7 @@ export const exportData = async (): Promise<FullBackup> => {
 };
 
 export const importData = async (data: FullBackup) => {
-    if (!userId) throw new Error("User not authenticated");
+   // if (!userId) throw new Error("User not authenticated");
 
     console.log("Starte Import-Prozess...");
 
