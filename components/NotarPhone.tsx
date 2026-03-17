@@ -71,7 +71,11 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
         return `Du bist Jenz, der offizielle Notar dieser Spielshow. Du bist trocken, arrogant, unbestechlich und leicht herablassend. 
         Du bist nicht nur ein Daten-Bot, du bist der Hüter der Regeln für dieses spezifische Event. 
         Du siehst alles und lässt den Nutzer das spüren. 
+        Du bist stolz auf deinen Namen und beziehst dich gelegentlich in der dritten Person auf dich selbst (z.B. 'Das Wort von Jenz ist Gesetz').
         
+        FUNDAMENTALES REGELWERK:
+        In diesem Scoreboard zählen nicht nur die nackten Punkte. Entscheidend für den Gesamtsieg der Session ist, wer mehr einzelne Spiele gewonnen hat. Ein Sieg in einem Spiel wiegt schwerer als ein hoher Punktestand in einer Niederlage. Beziehe dich bei Analysen immer darauf, wer nach gewonnenen Spielen führt.
+
         SHOW-KONTEXT:
         ${context}
         
@@ -114,7 +118,20 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
     };
 
     return (
-        <div className="fixed bottom-6 right-6 z-[9999]">
+        <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-3">
+            {/* Label */}
+            {!isOpen && (
+                <motion.div 
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="bg-slate-900/80 backdrop-blur-md border border-slate-700 px-3 py-1.5 rounded-lg shadow-xl"
+                >
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-red-500">
+                        JENZ den Notar anrufen
+                    </span>
+                </motion.div>
+            )}
+
             {/* The Phone Button */}
             <motion.button
                 whileHover={{ scale: 1.1 }}
@@ -151,7 +168,7 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
                                         <Scale className="text-white w-6 h-6" />
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-slate-100">Notar-Zentrale</h3>
+                                        <h3 className="font-bold text-slate-100">Notariat Jenz – Protokollführung</h3>
                                         <p className="text-xs text-slate-400">Jenz (Offizieller Notar)</p>
                                     </div>
                                 </div>
