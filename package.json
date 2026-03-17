@@ -10,10 +10,13 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@google/genai": "^1.45.0",
+    "firebase": "^12.5.0",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^0.577.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "recharts": "^3.3.0",
-    "firebase": "^12.5.0"
+    "recharts": "^3.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

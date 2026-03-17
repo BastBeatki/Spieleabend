@@ -419,7 +419,7 @@ export const importData = async (data: FullBackup) => {
                 }
             }
         } catch (sessionErr) {
-            console.error(`Fehler bei Session ${_id}:`, sessionErr);
+            console.error(`Fehler bei Session:`, sessionErr);
         }
     }
     console.log("Import abgeschlossen!");

@@ -8,6 +8,7 @@ import { GlobalStatsView } from './components/views/GlobalStatsView';
 import { ScoreboardView } from './components/views/ScoreboardView';
 import { LiveGameView } from './components/views/LiveGameView';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
+import { NotarPhone } from './components/NotarPhone';
 
 const App: React.FC = () => {
     // FIX: Wir starten direkt auf 'home' statt auf 'loading'
@@ -81,7 +82,7 @@ const App: React.FC = () => {
     };
 
     const sortedActiveSessionGames = useMemo(() => 
-        ([...activeSessionGames] || []).sort((a, b) => b.gameNumber - a.gameNumber),
+        ([...activeSessionGames]).sort((a, b) => b.gameNumber - a.gameNumber),
         [activeSessionGames]
     );
 
@@ -123,6 +124,7 @@ const App: React.FC = () => {
     return (
         <div className="w-full max-w-5xl mx-auto min-h-screen p-4 sm:p-6 lg:p-8 flex flex-col">
             {renderView()}
+            <NotarPhone />
         </div>
     );
 };
