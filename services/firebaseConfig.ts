@@ -3,7 +3,7 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAAPvR7I-cj6Fvsy689qGQW1bF1cUAnanc",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "spieleabend-scoreboard.firebaseapp.com",
   projectId: "spieleabend-scoreboard",
   storageBucket: "spieleabend-scoreboard.firebasestorage.app",
