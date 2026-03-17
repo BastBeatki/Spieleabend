@@ -1,26 +1,25 @@
 
-import * as mockService from './mockFirebase';
+import { app, db, auth, firebaseConfig } from './firebaseConfig';
+import * as realService from './realFirebase';
 
-// The application now runs exclusively in a local-only (mock) mode
-// as per user request. The logic for connecting to a live Firebase backend
-// has been removed. All data is handled locally by the mock service.
-// The import/export feature should be used for data persistence.
+// Initialize the real Firebase service with our configuration
+realService.init(app, db, auth, firebaseConfig.appId);
 
-export const onAuth = mockService.onAuth;
-export const subscribeToCollection = mockService.subscribeToCollection;
-export const subscribeToSubCollection = mockService.subscribeToSubCollection;
-export const subscribeToDocument = mockService.subscribeToDocument;
-export const addDocument = mockService.addDocument;
-export const updateDocument = mockService.updateDocument;
-export const deleteDocument = mockService.deleteDocument;
-export const startSession = mockService.startSession;
-export const startGame = mockService.startGame;
-export const updateScoresTransaction = mockService.updateScoresTransaction;
-export const undoLastUpdateTransaction = mockService.undoLastUpdateTransaction;
-export const deleteGameTransaction = mockService.deleteGameTransaction;
-export const addPlayersToSessionTransaction = mockService.addPlayersToSessionTransaction;
-export const deleteSession = mockService.deleteSession;
-export const getAllGameNames = mockService.getAllGameNames;
-export const getAllGames = mockService.getAllGames;
-export const exportData = mockService.exportData;
-export const importData = mockService.importData;
+export const onAuth = realService.onAuth;
+export const subscribeToCollection = realService.subscribeToCollection;
+export const subscribeToSubCollection = realService.subscribeToSubCollection;
+export const subscribeToDocument = realService.subscribeToDocument;
+export const addDocument = realService.addDocument;
+export const updateDocument = realService.updateDocument;
+export const deleteDocument = realService.deleteDocument;
+export const startSession = realService.startSession;
+export const startGame = realService.startGame;
+export const updateScoresTransaction = realService.updateScoresTransaction;
+export const undoLastUpdateTransaction = realService.undoLastUpdateTransaction;
+export const deleteGameTransaction = realService.deleteGameTransaction;
+export const addPlayersToSessionTransaction = realService.addPlayersToSessionTransaction;
+export const deleteSession = realService.deleteSession;
+export const getAllGameNames = realService.getAllGameNames;
+export const getAllGames = realService.getAllGames;
+export const exportData = realService.exportData;
+export const importData = realService.importData;

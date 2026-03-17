@@ -27,13 +27,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
     const [isBuzzerActive, setIsBuzzerActive] = useState(false);
     
     const enrichedSessionPlayers: SessionPlayer[] = useMemo(() => {
-        const globalPlayerMap = new Map(players.map(p => [p.id, p]));
-        // FIX: The errors indicate that type information is being lost, likely from the mock
-        // service returning `any`. Casting `session.players` back to `SessionPlayer[]`
-        // allows TypeScript to correctly infer the types for `sessionPlayer` and `globalPlayer`,
-        // resolving the property access errors. This also fixes cascading type errors later in the component.
-        // By correctly typing `sessionPlayer`, we resolve the incorrect 'unknown' type inference downstream.
-        // FIX: Change sessionPlayer type to any to handle cases where type information is lost from the mock service.
+        const globalPlayerMap = new Map<string, Player>(players.map(p => [p.id, p]));
         return (session.players as SessionPlayer[]).map((sessionPlayer: any) => {
             const globalPlayer = globalPlayerMap.get(sessionPlayer.id);
             if (globalPlayer) {
@@ -106,7 +100,7 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
     };
     
     const handleUpdateScores = async () => {
-        const hasScores = Object.values(scoresToAdd).some(s => s !== 0 && !isNaN(s));
+        const hasScores = Object.values(scoresToAdd).some((s: any) => s !== 0 && !isNaN(s));
         if (!hasScores) {
             setModal({isOpen: true, title: 'Keine Punkte', message: 'Bitte trage Punkte ein.'});
             return;
