@@ -124,7 +124,12 @@ const App: React.FC = () => {
     return (
         <div className="w-full max-w-5xl mx-auto min-h-screen p-4 sm:p-6 lg:p-8 flex flex-col">
             {renderView()}
-            <NotarPhone />
+            <NotarPhone 
+                view={view}
+                activeSession={activeSession}
+                activeGame={activeGame}
+                players={players}
+            />
         </div>
     );
 };

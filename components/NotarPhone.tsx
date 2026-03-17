@@ -3,8 +3,16 @@ import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { motion, AnimatePresence } from "framer-motion";
 import { Phone, X, Send, Scale, User, Bot } from "lucide-react";
+import { Session, Game, Player, View } from '../types';
 
-export const NotarPhone: React.FC = () => {
+interface NotarPhoneProps {
+    view: View;
+    activeSession: Session | null;
+    activeGame: Game | null;
+    players: Player[];
+}
+
+export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, activeGame, players }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [input, setInput] = useState("");
     const [messages, setMessages] = useState<{ role: 'user' | 'bot', text: string }[]>([]);
@@ -19,6 +27,38 @@ export const NotarPhone: React.FC = () => {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [messages]);
+
+    const getSystemInstruction = () => {
+        let context = "";
+
+        if (view === 'liveGame' && activeGame) {
+            const scores = Object.entries(activeGame.gameScores)
+                .map(([pid, score]) => {
+                    const p = players.find(player => player.id === pid);
+                    return `${p?.name || 'Unbekannt'}: ${score} Punkte`;
+                })
+                .join(", ");
+            context = `Wir befinden uns gerade mitten im Spiel "${activeGame.name}". Die aktuellen Spielstände sind: ${scores}.`;
+        } else if (view === 'scoreboard' && activeSession) {
+            const standings = Object.entries(activeSession.totalScores)
+                .map(([pid, score]) => {
+                    const p = players.find(player => player.id === pid);
+                    return `${p?.name || 'Unbekannt'}: ${score} Gesamtpunkte`;
+                })
+                .join(", ");
+            context = `Wir befinden uns in der Session-Übersicht von "${activeSession.name}". Teilnehmer: ${activeSession.players.map(p => p.name).join(", ")}. Gesamtzwischenstand: ${standings}.`;
+        } else if (view === 'home') {
+            context = "Wir befinden uns auf der Startseite. Es läuft aktuell gar keine Show.";
+        } else {
+            context = `Aktuelle Ansicht: ${view}.`;
+        }
+
+        return `Du bist Jenz, der offizielle Notar dieser Spielshow. Du bist trocken, arrogant, unbestechlich und leicht herablassend. 
+        Du siehst alles und lässt den Nutzer das spüren. 
+        ${context}
+        Wenn du in einem Spiel angerufen wirst, nenne das Spiel beim Namen und kommentiere die Spielstände (z.B. 'Ah, beim Darts wird also wieder geschummelt? Ich sehe genau, dass Spieler B führt...').
+        Antworte kurz, förmlich, nutze Begriffe wie Aktenlage oder nach strenger Prüfung und fälle am Ende IMMER ein klares Urteil für eine Seite.`;
+    };
 
     const handleAskNotar = async () => {
         if (!input.trim() || isLoading) return;
@@ -35,7 +75,7 @@ export const NotarPhone: React.FC = () => {
                 model: "gemini-3-flash-preview",
                 contents: userMsg,
                 config: {
-                    systemInstruction: "Du bist Dr. h.c. Justus Urteil, der unbestechliche, förmliche und leicht arrogante Notar dieser Spielshow. Deine Aufgabe ist es, Streitigkeiten am Spieleabend zu schlichten. Antworte kurz, förmlich, nutze Begriffe wie Aktenlage oder nach strenger Prüfung und fälle am Ende IMMER ein klares Urteil für eine Seite."
+                    systemInstruction: getSystemInstruction()
                 }
             });
 
@@ -88,7 +128,7 @@ export const NotarPhone: React.FC = () => {
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-slate-100">Notar-Zentrale</h3>
-                                        <p className="text-xs text-slate-400">Dr. h.c. Justus Urteil</p>
+                                        <p className="text-xs text-slate-400">Jenz (Offizieller Notar)</p>
                                     </div>
                                 </div>
                                 <button 
