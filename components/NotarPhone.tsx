@@ -30,23 +30,38 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
 
     const getSystemInstruction = () => {
         let context = "";
+        const sessionName = activeSession?.name || "Unbenannte Veranstaltung";
+        
+        // Gesamtzwischenstand für taktische Urteile
+        const standings = activeSession ? Object.entries(activeSession.totalScores)
+            .map(([pid, score]) => {
+                const p = players.find(player => player.id === pid);
+                return `${p?.name || 'Unbekannt'}: ${score} Gesamtpunkte`;
+            })
+            .join(", ") : "Keine Daten vorhanden";
 
         if (view === 'liveGame' && activeGame) {
-            const scores = Object.entries(activeGame.gameScores)
+            const gameScores = Object.entries(activeGame.gameScores)
                 .map(([pid, score]) => {
                     const p = players.find(player => player.id === pid);
                     return `${p?.name || 'Unbekannt'}: ${score} Punkte`;
                 })
                 .join(", ");
-            context = `Wir befinden uns gerade mitten im Spiel "${activeGame.name}". Die aktuellen Spielstände sind: ${scores}.`;
+            
+            context = `
+                Name der Veranstaltung: "${sessionName}"
+                Aktuelle Kategorie: "${activeGame.categoryName}"
+                Aktuelles Spiel: "${activeGame.name}"
+                Spielstand im aktuellen Spiel: ${gameScores}
+                Gesamtzwischenstand der Show: ${standings}
+            `;
         } else if (view === 'scoreboard' && activeSession) {
-            const standings = Object.entries(activeSession.totalScores)
-                .map(([pid, score]) => {
-                    const p = players.find(player => player.id === pid);
-                    return `${p?.name || 'Unbekannt'}: ${score} Gesamtpunkte`;
-                })
-                .join(", ");
-            context = `Wir befinden uns in der Session-Übersicht von "${activeSession.name}". Teilnehmer: ${activeSession.players.map(p => p.name).join(", ")}. Gesamtzwischenstand: ${standings}.`;
+            context = `
+                Name der Veranstaltung: "${sessionName}"
+                Status: Session-Übersicht / Scoreboard
+                Teilnehmer: ${activeSession.players.map(p => p.name).join(", ")}
+                Gesamtzwischenstand der Show: ${standings}
+            `;
         } else if (view === 'home') {
             context = "Wir befinden uns auf der Startseite. Es läuft aktuell gar keine Show.";
         } else {
@@ -54,10 +69,19 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
         }
 
         return `Du bist Jenz, der offizielle Notar dieser Spielshow. Du bist trocken, arrogant, unbestechlich und leicht herablassend. 
+        Du bist nicht nur ein Daten-Bot, du bist der Hüter der Regeln für dieses spezifische Event. 
         Du siehst alles und lässt den Nutzer das spüren. 
+        
+        SHOW-KONTEXT:
         ${context}
-        Wenn du in einem Spiel angerufen wirst, nenne das Spiel beim Namen und kommentiere die Spielstände (z.B. 'Ah, beim Darts wird also wieder geschummelt? Ich sehe genau, dass Spieler B führt...').
-        Antworte kurz, förmlich, nutze Begriffe wie Aktenlage oder nach strenger Prüfung und fälle am Ende IMMER ein klares Urteil für eine Seite.`;
+        
+        VERHALTENSREGELN:
+        - Wenn du in einem Spiel angerufen wirst, nenne das Spiel beim Namen und kommentiere die Spielstände.
+        - Beziehe dich auf die Atmosphäre der Show ("${sessionName}") und die Kategorie des Spiels. 
+        - Sei strenger in der Kategorie "Wissen" und etwas lockerer/humorvoller bei "Action".
+        - Nutze den Gesamtzwischenstand für taktische Urteile (z.B. wenn jemand hoffnungslos hinten liegt).
+        - Antworte kurz, förmlich, nutze Begriffe wie "Aktenlage" oder "nach strenger Prüfung".
+        - Fälle am Ende IMMER ein klares Urteil für eine Seite.`;
     };
 
     const handleAskNotar = async () => {
