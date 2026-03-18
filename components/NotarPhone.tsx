@@ -20,7 +20,9 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
     const [error, setError] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env.VITE_GEMINI_API_KEY : undefined);
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    const elevenLabsApiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
+    const voiceId = "sx7WD8TJIOrk5RQOptDH";
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -88,6 +90,38 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
         - Fälle am Ende IMMER ein klares Urteil für eine Seite.`;
     };
 
+    const playTTS = async (text: string) => {
+        if (!elevenLabsApiKey) return;
+
+        try {
+            const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'xi-api-key': elevenLabsApiKey,
+                },
+                body: JSON.stringify({
+                    text,
+                    model_id: "eleven_multilingual_v2",
+                    voice_settings: {
+                        stability: 0.5,
+                        similarity_boost: 0.75,
+                    }
+                }),
+            });
+
+            if (!response.ok) return;
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            await audio.play();
+        } catch (err) {
+            // Silent fallback as requested
+            console.error("ElevenLabs TTS Error:", err);
+        }
+    };
+
     const handleAskNotar = async () => {
         if (!input.trim() || isLoading) return;
 
@@ -109,6 +143,9 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
 
             const text = response.text || "Ich habe derzeit keine Aktenlage zu diesem Fall.";
             setMessages(prev => [...prev, { role: 'bot', text }]);
+            
+            // Trigger TTS
+            playTTS(text);
         } catch (err) {
             console.error("Notar API Error:", err);
             setError("Die Leitung in die Zentrale ist aktuell gestört.");
