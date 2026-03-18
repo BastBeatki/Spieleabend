@@ -22,7 +22,7 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
 
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     const elevenLabsApiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
-    const voiceId = "sx7WD8TJIOrk5RQOptDH";
+    const voiceId = "8e5a378942017f416f4a7875e39b5e57e05f9b8eab6b11b4eb308b67e295f911";
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -94,11 +94,13 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
         if (!elevenLabsApiKey) return;
 
         try {
+            console.log("Starte Audio-Kontext...");
+            console.log("Sende an ElevenLabs...");
             const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'xi-api-key': elevenLabsApiKey,
+                    'xi-api-key': import.meta.env.VITE_ELEVENLABS_API_KEY,
                 },
                 body: JSON.stringify({
                     text,
@@ -110,20 +112,32 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
                 }),
             });
 
-            if (!response.ok) return;
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error(`ElevenLabs API Fehler (Status: ${response.status}):`, errorData);
+                return;
+            }
 
             const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
+            // Explizit als audio/mpeg behandeln, um MIME-Type Fehler zu umgehen
+            const audioBlob = new Blob([blob], { type: 'audio/mpeg' });
+            const url = URL.createObjectURL(audioBlob);
             const audio = new Audio(url);
+            (audio as any).type = 'audio/mpeg';
+            
+            console.log("Audio bereit, starte Wiedergabe...");
             await audio.play();
         } catch (err) {
-            // Silent fallback as requested
-            console.error("ElevenLabs TTS Error:", err);
+            console.error("ElevenLabs Fehler:", err);
         }
     };
 
     const handleAskNotar = async () => {
         if (!input.trim() || isLoading) return;
+
+        // Audio-Kontext für iPad/iOS "scharf" schalten (User Interaction)
+        const unlockAudio = new Audio();
+        unlockAudio.play().catch(() => {});
 
         const userMsg = input.trim();
         setInput("");
