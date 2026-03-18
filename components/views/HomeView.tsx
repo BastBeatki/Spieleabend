@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Session, View, FullBackup } from '../../types';
 import * as fb from '../../services/firebaseService';
 import { Modal } from '../ui/Modal';
-import { ExportIcon, ImportIcon, TrashIcon, UserIcon } from '../ui/Icons';
+import { ExportIcon, ImportIcon, TrashIcon, UserIcon, PlayerAvatar } from '../ui/Icons';
 
 interface HomeViewProps {
   sessions: Session[];
@@ -157,6 +157,13 @@ export const HomeView: React.FC<HomeViewProps> = ({ sessions, navigate, setView 
 
               <div className="p-4 flex-grow flex flex-col justify-between">
                 <div>
+                   <div className="flex -space-x-2 mb-4 overflow-hidden">
+                    {s.players.map(p => (
+                      <div key={p.id} className="w-8 h-8 rounded-full border-2 border-slate-900 bg-slate-800 flex items-center justify-center overflow-hidden" title={p.name}>
+                         <PlayerAvatar avatar={p.avatar} localAvatar={p.localAvatar} size={32} />
+                      </div>
+                    ))}
+                   </div>
                    <h3 
                     className="font-bold text-lg text-slate-100 cursor-pointer" 
                     onClick={() => navigate('scoreboard', { sessionId: s.id })}

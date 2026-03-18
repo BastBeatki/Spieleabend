@@ -22,7 +22,7 @@ interface LiveGameViewProps {
 
 export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updates, players, navigate }) => {
     const [scoresToAdd, setScoresToAdd] = useState<{ [playerId: string]: number }>({});
-    const [modal, setModal] =useState<{ isOpen: boolean; title: string; message: string; onConfirm?: (confirmed: boolean) => void }>({ isOpen: false, title: '', message: '' });
+    const [modal, setModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm?: (confirmed: boolean) => void }>({ isOpen: false, title: '', message: '' });
     const [chartMode, setChartMode] = useState<'cumulative' | 'perUpdate'>('cumulative');
     const [isBuzzerActive, setIsBuzzerActive] = useState(false);
     
@@ -148,7 +148,10 @@ export const LiveGameView: React.FC<LiveGameViewProps> = ({ session, game, updat
                         <h3 className="text-xl font-semibold mb-4">Punkte hinzufügen</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">{layoutPlayers.map(p => (
                              <div key={p.id} className="bg-slate-800/80 p-4 rounded-lg flex flex-col items-center gap-2">
-                                <label className="font-bold text-lg" style={{ color: p.color }}>{p.name}</label>
+                                <div className="flex flex-col items-center gap-1">
+                                    <PlayerAvatar avatar={p.avatar} localAvatar={p.localAvatar} size={32} />
+                                    <label className="font-bold text-lg" style={{ color: p.color }}>{p.name}</label>
+                                </div>
                                 <div className="flex items-center justify-center gap-3 w-full">
                                     <button onClick={() => updateScore(p.id, (scoresToAdd[p.id] || 0) - 1)} className="w-12 h-12 rounded-full bg-slate-700 hover:bg-slate-600 transition-colors text-2xl font-bold flex items-center justify-center">-</button>
                                     <input type="number" value={scoresToAdd[p.id] || 0} onChange={e => updateScore(p.id, parseInt(e.target.value) || 0)} className="w-20 text-center bg-transparent border-none text-3xl font-black p-0 focus:ring-0"/>

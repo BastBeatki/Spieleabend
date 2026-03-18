@@ -20,7 +20,7 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
     const [error, setError] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env.VITE_GEMINI_API_KEY : undefined);
 
     useEffect(() => {
         if (scrollRef.current) {

@@ -21,6 +21,7 @@ import {
     Firestore
 } from 'firebase/firestore';
 import { Player, Game, FullBackup } from '../types';
+import { firebaseConfig } from './firebaseConfig';
 
 let app: FirebaseApp;
 let db: Firestore;
@@ -36,6 +37,12 @@ export const init = (firebaseApp: FirebaseApp, firestore: Firestore, firebaseAut
 }
 
 export const onAuth = (callback: (user: User | null, error?: Error) => void) => {
+    if (!firebaseConfig.apiKey) {
+        console.error("Firebase API Key is missing. Authentication will not work.");
+        callback(null, new Error("Missing API Key"));
+        return () => {};
+    }
+
     return onAuthStateChanged(auth, (user) => {
         if (user) {
             userId = user.uid;
@@ -43,6 +50,9 @@ export const onAuth = (callback: (user: User | null, error?: Error) => void) => 
         } else {
             signInAnonymously(auth).catch(error => {
                 console.error("Anonymous sign-in failed:", error);
+                if (error.code === 'auth/api-key-not-valid') {
+                    console.error("CRITICAL: The provided Firebase API Key is invalid.");
+                }
                 callback(null, error);
             });
         }

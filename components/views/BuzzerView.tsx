@@ -47,7 +47,7 @@ export const BuzzerView: React.FC<BuzzerViewProps> = ({ players, onClose }) => {
                     `}
                     style={{ backgroundColor: player.color }}
                 >
-                    <PlayerAvatar avatar={player.avatar} size={80} className="mb-4" />
+                    <PlayerAvatar avatar={player.avatar} localAvatar={player.localAvatar} size={80} className="mb-4" />
                     <span>{player.name}</span>
                 </button>
             </div>
@@ -79,7 +79,7 @@ export const BuzzerView: React.FC<BuzzerViewProps> = ({ players, onClose }) => {
                     `}
                     style={{ backgroundColor: player.color }}
                 >
-                    <PlayerAvatar avatar={player.avatar} size={80} className="mb-4" />
+                    <PlayerAvatar avatar={player.avatar} localAvatar={player.localAvatar} size={80} className="mb-4" />
                     <span>{player.name}</span>
                 </button>
             ))}
@@ -97,7 +97,7 @@ export const BuzzerView: React.FC<BuzzerViewProps> = ({ players, onClose }) => {
       {buzzedPlayer && (
         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center z-10 animate-fade-in">
           <div className="text-center">
-             <PlayerAvatar avatar={buzzedPlayer.avatar} size={128} className="mb-4 border-4 border-white" />
+             <PlayerAvatar avatar={buzzedPlayer.avatar} localAvatar={buzzedPlayer.localAvatar} size={128} className="mb-4 border-4 border-white" />
             <h2 className="text-6xl font-black mb-8" style={{ color: buzzedPlayer.color }}>
               {buzzedPlayer.name}
             </h2>

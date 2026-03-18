@@ -17,6 +17,7 @@ const App: React.FC = () => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [sessions, setSessions] = useState<Session[]>([]);
     const [allGameNames, setAllGameNames] = useState<string[]>([]);
+    const [connectionError, setConnectionError] = useState<string | null>(null);
 
     const [activeSession, setActiveSession] = useState<Session | null>(null);
     const [activeSessionGames, setActiveSessionGames] = useState<Game[]>([]);
@@ -48,7 +49,15 @@ const App: React.FC = () => {
 
         const authUnsubscribe = fb.onAuth(async (user, error) => {
             if (user) {
+                setConnectionError(null);
                 setupSubscriptions();
+            } else if (error) {
+                console.error("Auth error in App:", error);
+                if (error.message.includes('api-key-not-valid')) {
+                    setConnectionError("Ungültiger Firebase API-Key. Bitte prüfe deine Umgebungsvariablen.");
+                } else {
+                    setConnectionError("Verbindung zum Server fehlgeschlagen.");
+                }
             }
         });
 
@@ -123,6 +132,15 @@ const App: React.FC = () => {
 
     return (
         <div className="w-full max-w-5xl mx-auto min-h-screen p-4 sm:p-6 lg:p-8 flex flex-col">
+            {connectionError && (
+                <div className="mb-6 p-4 bg-red-900/30 border border-red-500/50 rounded-xl text-red-200 text-sm flex items-center gap-3 animate-pulse">
+                    <span className="text-xl">⚠️</span>
+                    <div>
+                        <p className="font-bold">Verbindungsproblem</p>
+                        <p className="opacity-80">{connectionError}</p>
+                    </div>
+                </div>
+            )}
             {renderView()}
             <NotarPhone 
                 view={view}

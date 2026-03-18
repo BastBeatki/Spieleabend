@@ -2,8 +2,14 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
+const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+
+if (!apiKey || apiKey === "undefined" || apiKey === "") {
+  console.error("CRITICAL: VITE_FIREBASE_API_KEY is missing. Please add it to your AI Studio Secrets.");
+}
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  apiKey: apiKey,
   authDomain: "spieleabend-scoreboard.firebaseapp.com",
   projectId: "spieleabend-scoreboard",
   storageBucket: "spieleabend-scoreboard.firebasestorage.app",

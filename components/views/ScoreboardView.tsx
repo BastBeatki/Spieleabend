@@ -92,7 +92,19 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
     const [chartMode, setChartMode] = useState<'cumulative' | 'perGame'>('cumulative');
     const [modal, setModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm?: (confirmed: boolean) => void }>({ isOpen: false, title: '', message: '' });
 
-    const enrichedSessionPlayers = useMemo(() => session.players, [session.players]);
+    const enrichedSessionPlayers = useMemo(() => {
+        return session.players.map(sp => {
+            // Find the current master data for this player by name to get the latest avatar
+            const masterPlayer = players.find(p => p.name === sp.name);
+            return {
+                ...sp,
+                // Prioritize master data for avatar and color to keep it dynamic
+                avatar: masterPlayer?.avatar || sp.avatar,
+                localAvatar: masterPlayer?.localAvatar || sp.localAvatar,
+                color: masterPlayer?.color || sp.color
+            };
+        });
+    }, [session.players, players]);
 
     const playerStats = useMemo(() => {
         const stats: { [playerId: string]: { gamesWon: number } } = {};
@@ -330,11 +342,22 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                             <span className="text-lg font-bold">{Object.values(g.gameScores).reduce((a: number, b: number) => a + b, 0)} Pkt</span>
                         </div>
                         <div className="flex justify-between items-center mt-2">
-                            <div className="text-sm text-blue-400">🏆 {
-                                getGameWinnerIds(g.gameScores)
-                                .map(pId => enrichedSessionPlayers.find(p => p.id === pId)?.name)
-                                .join(', ') || 'Niemand'
-                            }</div>
+                            <div className="text-sm text-blue-400 flex items-center gap-2 flex-wrap">
+                                <span>🏆</span>
+                                {getGameWinnerIds(g.gameScores).length > 0 ? (
+                                    getGameWinnerIds(g.gameScores).map(pId => {
+                                        const p = enrichedSessionPlayers.find(player => player.id === pId);
+                                        return p ? (
+                                            <div key={pId} className="flex items-center gap-1 bg-slate-700/50 px-2 py-0.5 rounded-full">
+                                                <PlayerAvatar avatar={p.avatar} localAvatar={p.localAvatar} size={16} />
+                                                <span>{p.name}</span>
+                                            </div>
+                                        ) : null;
+                                    })
+                                ) : (
+                                    <span>Niemand</span>
+                                )}
+                            </div>
                              <button onClick={() => handleDeleteGame(g.id, g.name)} className="delete-btn opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 p-1"><TrashIcon size={20} /></button>
                         </div>
                     </div>
@@ -348,7 +371,15 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
                         <h4 className="font-semibold mb-2">{cat.name}</h4>
                         <div className="space-y-1">{Object.entries(cat.scores).sort(([,a],[,b]) => Number(b) - Number(a)).map(([pId, score]) => {
                             const player = enrichedSessionPlayers.find(p => p.id === pId);
-                            return player ? <div key={pId} className="flex justify-between text-sm"><span style={{color: player.color}}>{player.name}</span><span className="font-bold">{score} Pkt</span></div> : null;
+                            return player ? (
+                                <div key={pId} className="flex justify-between items-center text-sm">
+                                    <div className="flex items-center gap-2">
+                                        <PlayerAvatar avatar={player.avatar} localAvatar={player.localAvatar} size={20} />
+                                        <span style={{color: player.color}}>{player.name}</span>
+                                    </div>
+                                    <span className="font-bold">{score} Pkt</span>
+                                </div>
+                            ) : null;
                         })}</div>
                     </div>
                 ))}</div>
