@@ -142,7 +142,8 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
 
         const recognition = new SpeechRecognition();
         recognition.lang = 'de-DE';
-        recognition.interimResults = false;
+        recognition.continuous = false;
+        recognition.interimResults = true;
         recognition.maxAlternatives = 1;
 
         recognition.onstart = () => {
@@ -150,10 +151,23 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
         };
 
         recognition.onresult = (event: any) => {
-            const transcript = event.results[0][0].transcript;
-            setInput(transcript);
-            // Wir rufen handleAskNotar direkt mit dem erkannten Text auf
-            handleAskNotar(transcript);
+            let interimTranscript = '';
+            let finalTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+
+            if (finalTranscript) {
+                setInput(finalTranscript);
+                handleAskNotar(finalTranscript);
+            } else if (interimTranscript) {
+                setInput(interimTranscript);
+            }
         };
 
         recognition.onerror = (event: any) => {
@@ -165,6 +179,7 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
             setIsListening(false);
         };
 
+        recognition.lang = 'de-DE';
         recognition.start();
     };
 
