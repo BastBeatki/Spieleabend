@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, X, Send, Scale, User, Bot } from "lucide-react";
+import { Phone, X, Send, Scale, User, Bot, Mic } from "lucide-react";
 import { Session, Game, Player, View } from '../types';
 
 interface NotarPhoneProps {
@@ -15,6 +15,7 @@ interface NotarPhoneProps {
 export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, activeGame, players }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [input, setInput] = useState("");
+    const [isListening, setIsListening] = useState(false);
     const [messages, setMessages] = useState<{ role: 'user' | 'bot', text: string }[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -132,14 +133,50 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
         }
     };
 
-    const handleAskNotar = async () => {
-        if (!input.trim() || isLoading) return;
+    const startListening = () => {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            setError("Spracherkennung wird von diesem Browser nicht unterstützt.");
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'de-DE';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = () => {
+            setIsListening(true);
+        };
+
+        recognition.onresult = (event: any) => {
+            const transcript = event.results[0][0].transcript;
+            setInput(transcript);
+            // Wir rufen handleAskNotar direkt mit dem erkannten Text auf
+            handleAskNotar(transcript);
+        };
+
+        recognition.onerror = (event: any) => {
+            console.error("Speech Recognition Error:", event.error);
+            setIsListening(false);
+        };
+
+        recognition.onend = () => {
+            setIsListening(false);
+        };
+
+        recognition.start();
+    };
+
+    const handleAskNotar = async (overrideText?: string) => {
+        const textToProcess = overrideText || input;
+        if (!textToProcess.trim() || isLoading) return;
 
         // Audio-Kontext für iPad/iOS "scharf" schalten (User Interaction)
         const unlockAudio = new Audio();
         unlockAudio.play().catch(() => {});
 
-        const userMsg = input.trim();
+        const userMsg = textToProcess.trim();
         setInput("");
         setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
         setIsLoading(true);
@@ -281,16 +318,28 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
                             {/* Input Area */}
                             <div className="p-4 bg-slate-900 border-t border-slate-700">
                                 <div className="flex gap-2">
+                                    <button
+                                        onClick={startListening}
+                                        disabled={isLoading || isListening}
+                                        className={`p-2 rounded-lg transition-all ${
+                                            isListening 
+                                            ? 'bg-red-600 text-white animate-pulse' 
+                                            : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                                        }`}
+                                        title="Spracheingabe starten"
+                                    >
+                                        <Mic className="w-5 h-5" />
+                                    </button>
                                     <input 
                                         type="text"
                                         value={input}
                                         onChange={(e) => setInput(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleAskNotar()}
-                                        placeholder="Was ist vorgefallen?"
+                                        placeholder={isListening ? "Höre zu..." : "Was ist vorgefallen?"}
                                         className="flex-grow bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-red-500 transition-colors"
                                     />
                                     <button 
-                                        onClick={handleAskNotar}
+                                        onClick={() => handleAskNotar()}
                                         disabled={isLoading || !input.trim()}
                                         className="bg-red-600 hover:bg-red-700 disabled:bg-slate-700 text-white p-2 rounded-lg transition-colors"
                                     >
