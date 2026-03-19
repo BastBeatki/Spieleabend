@@ -188,7 +188,7 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setIsOpen(true)}
-                className="w-16 h-16 bg-red-600 rounded-full shadow-2xl flex items-center justify-center text-white text-3xl hover:bg-red-700 transition-colors border-4 border-white/20"
+                className="w-16 h-16 bg-red-600 rounded-full shadow-2xl flex items-center justify-center text-white text-3xl hover:bg-red-700 transition-colors border-4 border-white/20 no-select"
                 title="Rotes Notar-Telefon"
             >
                 ☎️

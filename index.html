@@ -2,13 +2,13 @@
 <html lang="de" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://picsum.photos; connect-src 'self' https://api.elevenlabs.io https://generativelanguage.googleapis.com https://*.googleapis.com https://*.firebaseio.com; media-src 'self' blob:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://picsum.photos; connect-src 'self' https://api.elevenlabs.io https://generativelanguage.googleapis.com https://*.googleapis.com https://*.firebaseio.com; media-src 'self' blob: data:;">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Spieleabend Scoreboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/recharts/umd/Recharts.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/index.css">
+    <link rel="stylesheet" href="./index.css">
     <style>
       body {
         font-family: 'Inter', sans-serif;
@@ -16,6 +16,12 @@
         margin: 0;
         padding: 0;
         min-height: 100vh;
+      }
+      /* Verhindert das Markieren des Telefon-Icons auf dem iPad */
+      .no-select {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
       }
     </style>
   </head>
