@@ -158,13 +158,9 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
             const text = response.text || "Ich habe derzeit keine Aktenlage zu diesem Fall.";
             setMessages(prev => [...prev, { role: 'bot', text }]);
             
-            // Trigger TTS with limited text to save credits
-            // Only first sentence/line, max 80 chars
-            const firstPart = text.split(/[.\n]/)[0].trim();
-            const limitedText = firstPart.length > 80 ? firstPart.substring(0, 80) : firstPart;
-            const spokenText = `${limitedText}... Akte geschlossen.`;
-            
-            playTTS(spokenText);
+            // Radikale Kürzung: Nur die ersten 5 Wörter nehmen
+            const speechText = text.split(' ').slice(0, 5).join(' ') + "... Akte geschlossen.";
+            playTTS(speechText);
         } catch (err) {
             console.error("Notar API Error:", err);
             setError("Die Leitung in die Zentrale ist aktuell gestört.");
