@@ -22,7 +22,7 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
 
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     const elevenLabsApiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
-    const voiceId = "8e5a378942017f416f4a7875e39b5e57e05f9b8eab6b11b4eb308b67e295f911";
+    const voiceId = "CwhRBWXzGAHq8TQ4Fs17";
 
     useEffect(() => {
         if (scrollRef.current) {
