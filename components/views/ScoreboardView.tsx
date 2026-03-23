@@ -92,6 +92,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
     const [chartMode, setChartMode] = useState<'cumulative' | 'perGame'>('cumulative');
     const [modal, setModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm?: (confirmed: boolean) => void }>({ isOpen: false, title: '', message: '' });
     const [chartKey, setChartKey] = useState(0);
+    const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
 
     useEffect(() => {
         // Fix for responsive rendering: trigger a re-render after mount
@@ -359,8 +360,23 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ session, games, 
              <div className="bg-slate-900/70 p-6 rounded-xl shadow-2xl border border-slate-800 mb-8">
                 <h3 className="text-xl font-semibold mb-4">Gespielte Spiele</h3>
                 <div className="space-y-4 max-h-96 overflow-y-auto pr-2">{games.map(g => (
-                    <div key={g.id} className="group bg-slate-800/80 p-4 rounded-lg transition-all duration-300 border border-transparent hover:border-blue-500/30">
-                         <div className="flex justify-between items-center cursor-pointer" onClick={() => navigate('liveGame', { sessionId: session.id, gameId: g.id })}>
+                    <div 
+                        key={g.id} 
+                        className={`group bg-slate-800/80 p-4 rounded-lg transition-all duration-300 border-2 touch-manipulation ${
+                            selectedGameId === g.id 
+                            ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] bg-slate-800' 
+                            : 'border-transparent hover:border-blue-500/30'
+                        }`}
+                        onClick={() => {
+                            if (selectedGameId === g.id) {
+                                navigate('liveGame', { sessionId: session.id, gameId: g.id });
+                            } else {
+                                setSelectedGameId(g.id);
+                            }
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                    >
+                         <div className="flex justify-between items-center cursor-pointer">
                             <h4 className="font-semibold text-lg">{g.gameNumber}. {g.name} <span className="text-xs text-slate-400 font-normal ml-2">{g.categoryName}</span></h4>
                             <span className="text-lg font-bold">{Object.values(g.gameScores).reduce((a: number, b: number) => a + b, 0)} Pkt</span>
                         </div>

@@ -23,6 +23,10 @@
         user-select: none;
         -webkit-touch-callout: none;
       }
+      /* Safari-Fix: Deaktiviert Gesten-Erkennung für schnellere Klicks */
+      button, .cursor-pointer, .touch-manipulation {
+        touch-action: manipulation;
+      }
     </style>
   </head>
   <body class="text-slate-100">

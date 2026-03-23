@@ -12,6 +12,7 @@ interface HomeViewProps {
 
 export const HomeView: React.FC<HomeViewProps> = ({ sessions, navigate, setView }) => {
     const [modal, setModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm?: (confirmed: boolean) => void }>({ isOpen: false, title: '', message: '' });
+    const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
     const importFileInputRef = React.useRef<HTMLInputElement>(null);
 
     const showConfirm = (title: string, message: string, onConfirm: (confirmed: boolean) => void) => {
@@ -139,11 +140,29 @@ export const HomeView: React.FC<HomeViewProps> = ({ sessions, navigate, setView 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {sessions.length > 0 ? sessions.map(s => {
             const imageSrc = s.coverImage || (s.localCoverImage ? `/images/sessions/${s.localCoverImage}` : undefined);
+            const isSelected = selectedSessionId === s.id;
+            
+            const handleSessionClick = () => {
+                if (isSelected) {
+                    navigate('scoreboard', { sessionId: s.id });
+                } else {
+                    setSelectedSessionId(s.id);
+                }
+            };
+
             return (
-            <div key={s.id} className="group bg-slate-900/70 rounded-xl overflow-hidden transition-all duration-300 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-800/50 flex flex-col">
+            <div 
+                key={s.id} 
+                className={`group bg-slate-900/70 rounded-xl overflow-hidden transition-all duration-300 border-2 touch-manipulation flex flex-col ${
+                    isSelected 
+                    ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] bg-slate-800' 
+                    : 'border-slate-800 hover:border-blue-500/50 hover:bg-slate-800/50'
+                }`}
+                onClick={handleSessionClick}
+                onPointerDown={(e) => e.stopPropagation()}
+            >
               <div 
                 className="relative aspect-video bg-slate-800 cursor-pointer"
-                onClick={() => navigate('scoreboard', { sessionId: s.id })}
               >
                 {imageSrc ? (
                   <img src={imageSrc} alt={s.name} className="w-full h-full object-cover"/>
@@ -164,10 +183,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ sessions, navigate, setView 
                       </div>
                     ))}
                    </div>
-                   <h3 
-                    className="font-bold text-lg text-slate-100 cursor-pointer" 
-                    onClick={() => navigate('scoreboard', { sessionId: s.id })}
-                   >
+                   <h3 className="font-bold text-lg text-slate-100 cursor-pointer">
                     {s.name}
                    </h3>
                    <p className="text-sm text-slate-400">{s.createdAt.toDate().toLocaleDateString('de-DE')}</p>
