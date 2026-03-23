@@ -13,6 +13,7 @@ interface HomeViewProps {
 export const HomeView: React.FC<HomeViewProps> = ({ sessions, navigate, setView }) => {
     const [modal, setModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm?: (confirmed: boolean) => void }>({ isOpen: false, title: '', message: '' });
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+    const justSelectedRef = React.useRef<string | null>(null);
     const importFileInputRef = React.useRef<HTMLInputElement>(null);
 
     const showConfirm = (title: string, message: string, onConfirm: (confirmed: boolean) => void) => {
@@ -143,23 +144,34 @@ export const HomeView: React.FC<HomeViewProps> = ({ sessions, navigate, setView 
             const isSelected = selectedSessionId === s.id;
             
             const handleSessionClick = () => {
-                if (isSelected) {
+                if (isSelected && justSelectedRef.current !== s.id) {
                     navigate('scoreboard', { sessionId: s.id });
-                } else {
+                } else if (!isSelected) {
                     setSelectedSessionId(s.id);
+                }
+                justSelectedRef.current = null;
+            };
+
+            const handlePointerDown = (e: React.PointerEvent) => {
+                e.stopPropagation();
+                if (selectedSessionId !== s.id) {
+                    setSelectedSessionId(s.id);
+                    justSelectedRef.current = s.id;
+                } else {
+                    justSelectedRef.current = null;
                 }
             };
 
             return (
             <div 
                 key={s.id} 
-                className={`group bg-slate-900/70 rounded-xl overflow-hidden transition-all duration-300 border-2 touch-manipulation flex flex-col ${
+                className={`group bg-slate-900/70 rounded-xl overflow-hidden transition-all duration-75 touch-manipulation flex flex-col ${
                     isSelected 
-                    ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] bg-slate-800' 
+                    ? 'border-blue-500 shadow-[0_0_25px_rgba(59,130,246,0.6)] bg-slate-800' 
                     : 'border-slate-800 hover:border-blue-500/50 hover:bg-slate-800/50'
                 }`}
                 onClick={handleSessionClick}
-                onPointerDown={(e) => e.stopPropagation()}
+                onPointerDown={handlePointerDown}
             >
               <div 
                 className="relative aspect-video bg-slate-800 cursor-pointer"
