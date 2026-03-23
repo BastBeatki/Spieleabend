@@ -52,11 +52,21 @@ export function ChartModeToggle<T extends string>({ options, currentMode, onChan
 // with the UMD build of recharts loaded from the CDN.
 export const CustomChartTooltip: React.FC<TooltipProps<any, any>> = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
+    // Filter payload to only include unique names to avoid duplicates from Area + Line
+    const uniquePayload = payload.reduce((acc: any[], current: any) => {
+      const x = acc.find(item => item.name === current.name);
+      if (!x) {
+        return acc.concat([current]);
+      } else {
+        return acc;
+      }
+    }, []);
+
     return (
       <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-700 p-4 rounded-lg shadow-lg text-sm">
         <p className="label font-bold text-slate-300 mb-2">{`${label}`}</p>
         <div className="space-y-1">
-          {payload.map((pld, index) => (
+          {uniquePayload.map((pld, index) => (
             <div key={`item-${index}`} className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: pld.color || '#8884d8' }}></span>

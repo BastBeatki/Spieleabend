@@ -52,6 +52,16 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
     const [chartMode, setChartMode] = useState<'perSession' | 'cumulative'>('perSession');
     const [categoryChartMode, setCategoryChartMode] = useState<'perGame' | 'cumulative'>('perGame');
     const [comparisonPlayerIds, setComparisonPlayerIds] = useState<Set<string>>(new Set());
+    const [chartKey, setChartKey] = useState(0);
+
+    useEffect(() => {
+        // Fix for responsive rendering: trigger a re-render after mount
+        const timer = setTimeout(() => {
+            setChartKey(prev => prev + 1);
+            window.dispatchEvent(new Event('resize'));
+        }, 300);
+        return () => clearTimeout(timer);
+    }, []);
 
      useEffect(() => {
         fb.getAllGames().then(games => {
@@ -407,9 +417,13 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                     />
                 </div>
                 <div className="relative h-80">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" key={chartKey}>
                         <LineChart data={timelineData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                              <defs>
+                                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feGaussianBlur stdDeviation="2" result="blur" />
+                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                </filter>
                                 {activePlayers.map(p => (
                                     <linearGradient key={`color-${p.id}`} id={`color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
@@ -422,10 +436,19 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                             <YAxis stroke="#64748b" />
                             <Tooltip content={<CustomChartTooltip />} />
                             <Legend wrapperStyle={{ color: '#cbd5e1' }} />
-                            {activePlayers.map(p => (
+                            {activePlayers.map((p, index) => (
                                 <React.Fragment key={p.id}>
                                     <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')})`} legendType="none" />
-                                    <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 6, stroke: 'rgba(255,255,255,0.3)', strokeWidth: 4}} />
+                                    <Line 
+                                        type="monotone" 
+                                        dataKey={p.name} 
+                                        stroke={p.color} 
+                                        strokeWidth={3} 
+                                        isAnimationActive={false}
+                                        filter="url(#glow)"
+                                        dot={{r: 2, fill: p.color, strokeWidth: 0}} 
+                                        activeDot={{r: 6, stroke: 'rgba(255,255,255,0.3)', strokeWidth: 4}} 
+                                    />
                                 </React.Fragment>
                             ))}
                         </LineChart>
@@ -469,9 +492,13 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                                 />
                             </div>
                             <div className="relative h-80">
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ResponsiveContainer key={`cat-${chartKey}`} width="100%" height="100%">
                                     <LineChart data={categoryStats.timelineData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                         <defs>
+                                            <filter id="glow-cat" x="-20%" y="-20%" width="140%" height="140%">
+                                                <feGaussianBlur stdDeviation="2" result="blur" />
+                                                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                            </filter>
                                             {activePlayers.map(p => (
                                                 <linearGradient key={`color-${p.id}-cat`} id={`color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}-cat`} x1="0" y1="0" x2="0" y2="1">
                                                     <stop offset="5%" stopColor={p.color} stopOpacity={0.4}/>
@@ -484,10 +511,19 @@ export const GlobalStatsView: React.FC<GlobalStatsViewProps> = ({ players, categ
                                         <YAxis stroke="#64748b" />
                                         <Tooltip content={<CustomChartTooltip />} />
                                         <Legend wrapperStyle={{ color: '#cbd5e1' }} />
-                                        {activePlayers.map(p => (
+                                        {activePlayers.map((p, index) => (
                                             <React.Fragment key={p.id}>
-                                                <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}-cat)`} legendType="none" />
-                                                <Line type="monotone" dataKey={p.name} stroke={p.color} strokeWidth={3} dot={{r: 2, fill: p.color, strokeWidth: 0}} activeDot={{r: 6}} />
+                                                <Area type="monotone" dataKey={p.name} stroke="transparent" fill={`url(#color-${p.id.replace(/[^a-zA-Z0-9]/g, '')}-cat)`} legendType="none" tooltipType="none" />
+                                                <Line 
+                                                    type="monotone" 
+                                                    dataKey={p.name} 
+                                                    stroke={p.color} 
+                                                    strokeWidth={3} 
+                                                    isAnimationActive={false}
+                                                    filter="url(#glow-cat)"
+                                                    dot={{r: 2, fill: p.color, strokeWidth: 0}} 
+                                                    activeDot={{r: 6}} 
+                                                />
                                             </React.Fragment>
                                         ))}
                                     </LineChart>
