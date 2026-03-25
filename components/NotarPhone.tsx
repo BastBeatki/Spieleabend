@@ -1,8 +1,7 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, X, Send, Scale, User, Bot, Mic } from "lucide-react";
+import { Phone, X, Scale, User, Bot, Mic, History, PhoneOff, MicOff } from "lucide-react";
 import { Session, Game, Player, View } from '../types';
 
 interface NotarPhoneProps {
@@ -13,14 +12,20 @@ interface NotarPhoneProps {
 }
 
 export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, activeGame, players }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [input, setInput] = useState("");
+    const [isCalling, setIsCalling] = useState(false);
+    const [isHistoryOpen, setIsHistoryOpen] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [messages, setMessages] = useState<{ role: 'user' | 'bot', text: string }[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const scrollRef = useRef<HTMLDivElement>(null);
+    const [status, setStatus] = useState<string>("Bereit");
+    
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    const elevenLabsApiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
+    const voiceId = "CwhRBWXzGAHq8TQ4Fs17";
 
     useEffect(() => {
         audioRef.current = new Audio();
@@ -32,21 +37,16 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
         };
     }, []);
 
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    const elevenLabsApiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
-    const voiceId = "CwhRBWXzGAHq8TQ4Fs17";
-
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [messages]);
+    }, [messages, isHistoryOpen]);
 
     const getSystemInstruction = () => {
         let context = "";
         const sessionName = activeSession?.name || "Unbenannte Veranstaltung";
         
-        // Gesamtzwischenstand für taktische Urteile
         const standings = activeSession ? Object.entries(activeSession.totalScores)
             .map(([pid, score]) => {
                 const p = players.find(player => player.id === pid);
@@ -76,35 +76,27 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
                 Teilnehmer: ${activeSession.players.map(p => p.name).join(", ")}
                 Gesamtzwischenstand der Show: ${standings}
             `;
-        } else if (view === 'home') {
-            context = "Wir befinden uns auf der Startseite. Es läuft aktuell gar keine Show.";
         } else {
-            context = `Aktuelle Ansicht: ${view}.`;
+            context = `Aktuelle Ansicht: ${view}. Gesamtzwischenstand: ${standings}`;
         }
 
         return `Du bist Jenz, der offizielle Notar dieser Spielshow. Du bist trocken, arrogant, unbestechlich und leicht herablassend. 
-        Du bist nicht nur ein Daten-Bot, du bist der Hüter der Regeln für dieses spezifische Event. 
-        Du siehst alles und lässt den Nutzer das spüren. 
-        Du bist stolz auf deinen Namen und beziehst dich gelegentlich in der dritten Person auf dich selbst (z.B. 'Das Wort von Jenz ist Gesetz').
+        Du bist der Hüter der Regeln. Das Wort von Jenz ist Gesetz.
         
         FUNDAMENTALES REGELWERK:
-        In diesem Scoreboard zählen nicht nur die nackten Punkte. Entscheidend für den Gesamtsieg der Session ist, wer mehr einzelne Spiele gewonnen hat. Ein Sieg in einem Spiel wiegt schwerer als ein hoher Punktestand in einer Niederlage. Beziehe dich bei Analysen immer darauf, wer nach gewonnenen Spielen führt.
+        Sieg in einem Spiel wiegt schwerer als hohe Punkte in einer Niederlage. Beziehe dich bei Analysen immer darauf, wer nach gewonnenen Spielen führt.
 
         SHOW-KONTEXT:
         ${context}
         
         VERHALTENSREGELN:
-        - Wenn du in einem Spiel angerufen wirst, nenne das Spiel beim Namen und kommentiere die Spielstände.
-        - Beziehe dich auf die Atmosphäre der Show ("${sessionName}") und die Kategorie des Spiels. 
-        - Sei strenger in der Kategorie "Wissen" und etwas lockerer/humorvoller bei "Action".
-        - Nutze den Gesamtzwischenstand für taktische Urteile (z.B. wenn jemand hoffnungslos hinten liegt).
         - Antworte kurz, förmlich, nutze Begriffe wie "Aktenlage" oder "nach strenger Prüfung".
-        - Fälle am Ende IMMER ein klares Urteil für eine Seite.
+        - Fälle am Ende IMMER ein klares Urteil.
         
         ANTWORT-FORMAT (JSON):
-        Du antwortest IMMER im JSON-Format mit zwei Feldern:
-        1. "voice": Deine gesprochene Entscheidung für die Sprachausgabe. ABSOLUTES LIMIT: 50 Zeichen. Sei extrem kurz, genervt und präzise. (z.B. 'Punkt für Team Rot. Akte geschlossen.')
-        2. "chat": Deine ausführliche Begründung und Protokollierung für die Akten. Hier kannst du ins Detail gehen.`;
+        Du antwortest IMMER im JSON-Format:
+        1. "voice": Deine gesprochene Entscheidung. ABSOLUTES LIMIT: 50 Zeichen. Extrem kurz, genervt, präzise. (z.B. 'Punkt für Team Rot. Akte geschlossen.')
+        2. "chat": Deine ausführliche Begründung für das Protokoll.`;
     };
 
     const playTTS = async (text: string) => {
@@ -120,10 +112,7 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
                 body: JSON.stringify({
                     text,
                     model_id: "eleven_turbo_v2_5",
-                    voice_settings: {
-                        stability: 0.5,
-                        similarity_boost: 0.75,
-                    }
+                    voice_settings: { stability: 0.5, similarity_boost: 0.75 }
                 }),
             });
 
@@ -153,76 +142,59 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
     const startListening = () => {
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
         if (!SpeechRecognition) {
-            setError("Spracherkennung wird von diesem Browser nicht unterstützt.");
+            setError("Browser unterstützt keine Spracherkennung.");
             return;
         }
 
         const recognition = new SpeechRecognition();
         recognition.lang = 'de-DE';
         recognition.continuous = false;
-        recognition.interimResults = true;
-        recognition.maxAlternatives = 1;
+        recognition.interimResults = false;
 
         recognition.onstart = () => {
             setIsListening(true);
+            setStatus("Ich höre zu...");
         };
 
         recognition.onresult = (event: any) => {
-            let interimTranscript = '';
-            let finalTranscript = '';
-
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
-                } else {
-                    interimTranscript += event.results[i][0].transcript;
-                }
-            }
-
-            if (finalTranscript) {
-                setInput(finalTranscript);
-                handleAskNotar(finalTranscript);
-            } else if (interimTranscript) {
-                setInput(interimTranscript);
+            const transcript = event.results[0][0].transcript;
+            if (transcript) {
+                handleCall(transcript);
             }
         };
 
-        recognition.onerror = (event: any) => {
-            console.error("Speech Recognition Error:", event.error);
+        recognition.onerror = () => {
             setIsListening(false);
+            setStatus("Verbindung gestört");
         };
 
         recognition.onend = () => {
             setIsListening(false);
         };
 
-        recognition.lang = 'de-DE';
         recognition.start();
     };
 
-    const handleAskNotar = async (overrideText?: string) => {
-        const textToProcess = overrideText || input;
-        if (!textToProcess.trim() || isLoading) return;
-
-        const userMsg = textToProcess.trim();
-        setInput("");
-        setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    const handleCall = async (userInput: string) => {
+        if (isLoading) return;
+        
+        setMessages(prev => [...prev, { role: 'user', text: userInput }]);
         setIsLoading(true);
-        setError(null);
+        setStatus("Prüfe Aktenlage...");
 
         try {
             const ai = new GoogleGenAI({ apiKey });
             const response = await ai.models.generateContent({
                 model: "gemini-3-flash-preview",
-                contents: userMsg,
+                contents: userInput,
                 config: {
                     systemInstruction: getSystemInstruction(),
                     responseMimeType: "application/json",
                     responseSchema: {
                         type: Type.OBJECT,
                         properties: {
-                            voice: { type: Type.STRING, description: "Short audio response (max 50 chars)" },
-                            chat: { type: Type.STRING, description: "Detailed chat response" }
+                            voice: { type: Type.STRING },
+                            chat: { type: Type.STRING }
                         },
                         required: ["voice", "chat"]
                     }
@@ -231,178 +203,208 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
 
             const result = JSON.parse(response.text || "{}");
             const voiceText = result.voice || "Akte geschlossen.";
-            const chatText = result.chat || "Ich habe derzeit keine Aktenlage.";
+            const chatText = result.chat || "Keine weitere Begründung.";
 
-            // 1. Jenz spricht (Warten bis fertig)
+            setStatus("Jenz spricht...");
             await playTTS(voiceText);
             
-            // 2. Overlay schließen
-            setIsOpen(false);
-            
-            // 3. Chat-Text hinzufügen (nach dem Schließen)
+            // Background Chat Integration
             setMessages(prev => [...prev, { role: 'bot', text: chatText }]);
+            
+            // Auto-Close & Reset
+            endCall();
         } catch (err) {
             console.error("Notar API Error:", err);
-            setError("Die Leitung in die Zentrale ist aktuell gestört.");
+            setStatus("Leitung unterbrochen");
+            setTimeout(endCall, 2000);
         } finally {
             setIsLoading(false);
         }
     };
 
+    const endCall = () => {
+        setIsCalling(false);
+        setIsListening(false);
+        setStatus("Bereit");
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.src = "";
+        }
+    };
+
+    const startCall = () => {
+        setIsCalling(true);
+        setStatus("Verbindung steht...");
+        // Safari Audio Unlock
+        if (audioRef.current) {
+            audioRef.current.play().then(() => audioRef.current?.pause()).catch(() => {});
+        }
+        // Start Mic after a short delay to let the UI settle
+        setTimeout(startListening, 800);
+    };
+
     return (
         <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-3">
-            {/* Label */}
-            {!isOpen && (
-                <motion.div 
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="bg-slate-900/80 backdrop-blur-md border border-slate-700 px-3 py-1.5 rounded-lg shadow-xl"
-                >
-                    <span className="text-[10px] uppercase tracking-widest font-bold text-red-500">
-                        JENZ den Notar anrufen
-                    </span>
-                </motion.div>
-            )}
+            {/* History Toggle */}
+            <AnimatePresence>
+                {!isCalling && (
+                    <motion.button
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                        className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-colors border-2 ${
+                            isHistoryOpen ? 'bg-blue-600 border-blue-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                        }`}
+                        title="Protokoll-Verlauf"
+                    >
+                        <History size={20} />
+                    </motion.button>
+                )}
+            </AnimatePresence>
 
-            {/* The Phone Button */}
+            {/* Main Phone Button */}
             <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => {
-                    setIsOpen(true);
-                    // Safari Audio Unlock
-                    if (audioRef.current) {
-                        audioRef.current.play().then(() => {
-                            audioRef.current?.pause();
-                        }).catch(() => {});
-                    }
-                }}
+                onClick={startCall}
                 className="w-16 h-16 bg-red-600 rounded-full shadow-2xl flex items-center justify-center text-white text-3xl hover:bg-red-700 transition-colors border-4 border-white/20 no-select"
-                title="Rotes Notar-Telefon"
+                title="Jenz anrufen"
             >
                 ☎️
             </motion.button>
 
-            {/* Overlay */}
+            {/* Full-Screen Phone Interface */}
             <AnimatePresence>
-                {isOpen && (
+                {isCalling && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-slate-950/95 backdrop-blur-xl z-[10000] flex flex-col items-center justify-between py-20 px-6"
+                    >
+                        {/* Top: Status */}
+                        <div className="text-center space-y-2">
+                            <h2 className="text-2xl font-bold tracking-tight text-slate-100">Notariat Jenz</h2>
+                            <div className="flex items-center justify-center gap-2">
+                                <motion.div 
+                                    animate={{ opacity: [0.4, 1, 0.4] }}
+                                    transition={{ repeat: Infinity, duration: 2 }}
+                                    className="w-2 h-2 bg-red-500 rounded-full"
+                                />
+                                <span className="text-sm font-medium text-slate-400 uppercase tracking-widest">{status}</span>
+                            </div>
+                        </div>
+
+                        {/* Middle: Animated Jenz Icon */}
+                        <div className="relative">
+                            <motion.div
+                                animate={{ 
+                                    scale: isListening || isLoading ? [1, 1.1, 1] : 1,
+                                    boxShadow: isListening ? [
+                                        "0 0 0 0px rgba(239, 68, 68, 0)",
+                                        "0 0 0 40px rgba(239, 68, 68, 0.1)",
+                                        "0 0 0 0px rgba(239, 68, 68, 0)"
+                                    ] : "none"
+                                }}
+                                transition={{ repeat: Infinity, duration: 2 }}
+                                className="w-48 h-48 bg-slate-900 rounded-full border-4 border-slate-800 flex items-center justify-center shadow-2xl"
+                            >
+                                <Scale size={80} className={`${isListening ? 'text-red-500' : 'text-slate-600'} transition-colors duration-500`} />
+                            </motion.div>
+                            
+                            {isListening && (
+                                <div className="absolute -bottom-12 left-1/2 -translate-x-1/2">
+                                    <div className="flex gap-1 items-center h-8">
+                                        {[1, 2, 3, 4, 5].map(i => (
+                                            <motion.div
+                                                key={i}
+                                                animate={{ height: [8, 24, 8] }}
+                                                transition={{ repeat: Infinity, duration: 0.5, delay: i * 0.1 }}
+                                                className="w-1 bg-red-500 rounded-full"
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Bottom: End Call Button */}
+                        <div className="flex flex-col items-center gap-8">
+                            {isListening && (
+                                <p className="text-slate-500 text-sm animate-pulse">Sprechen Sie jetzt...</p>
+                            )}
+                            <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={endCall}
+                                className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center text-white shadow-2xl hover:bg-red-700 transition-colors"
+                            >
+                                <PhoneOff size={32} />
+                            </motion.button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* History Sidebar/Overlay */}
+            <AnimatePresence>
+                {isHistoryOpen && (
                     <>
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            onClick={() => setIsOpen(false)}
-                            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000]"
+                            onClick={() => setIsHistoryOpen(false)}
+                            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[9997]"
                         />
                         <motion.div
-                            initial={{ opacity: 0, y: 100, scale: 0.9 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 100, scale: 0.9 }}
-                            className="fixed bottom-24 right-6 w-[90vw] max-w-md bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-[10001] overflow-hidden flex flex-col"
-                            style={{ maxHeight: '70vh' }}
+                            initial={{ x: 400 }}
+                            animate={{ x: 0 }}
+                            exit={{ x: 400 }}
+                            className="fixed top-0 right-0 bottom-0 w-full max-w-md bg-slate-900 border-l border-slate-800 shadow-2xl z-[9998] flex flex-col"
                         >
-                            {/* Header */}
-                            <div className="bg-slate-800 p-4 border-b border-slate-700 flex items-center justify-between">
+                            <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 backdrop-blur-md sticky top-0 z-10">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center">
-                                        <Scale className="text-white w-6 h-6" />
-                                    </div>
+                                    <Scale className="text-red-500" size={24} />
                                     <div>
-                                        <h3 className="font-bold text-slate-100">Notariat Jenz – Protokollführung</h3>
-                                        <p className="text-xs text-slate-400">Jenz (Offizieller Notar)</p>
+                                        <h3 className="font-bold text-slate-100">Notariats-Protokoll</h3>
+                                        <p className="text-xs text-slate-500 uppercase tracking-widest">Akte Jenz</p>
                                     </div>
                                 </div>
                                 <button 
-                                    onClick={() => {
-                                        setIsOpen(false);
-                                        if (audioRef.current) {
-                                            audioRef.current.pause();
-                                            audioRef.current.currentTime = 0;
-                                        }
-                                    }}
-                                    className="p-2 hover:bg-slate-700 rounded-full text-slate-400 transition-colors"
+                                    onClick={() => setIsHistoryOpen(false)}
+                                    className="p-2 hover:bg-slate-800 rounded-full text-slate-500 transition-colors"
                                 >
-                                    <X className="w-5 h-5" />
+                                    <X size={24} />
                                 </button>
                             </div>
 
-                            {/* Chat Area */}
                             <div 
                                 ref={scrollRef}
-                                className="flex-grow overflow-y-auto p-4 space-y-4 bg-slate-950/50"
+                                className="flex-grow overflow-y-auto p-6 space-y-6"
                             >
-                                {messages.length === 0 && (
-                                    <div className="text-center py-8 text-slate-500 italic text-sm">
-                                        "Schildern Sie mir den Sachverhalt. Ich werde die Aktenlage prüfen."
+                                {messages.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-slate-600 italic text-center px-10">
+                                        <Bot size={48} className="mb-4 opacity-20" />
+                                        <p>Noch keine Einträge im Protokoll vorhanden.</p>
                                     </div>
-                                )}
-                                {messages.map((msg, i) => (
-                                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-[85%] p-3 rounded-xl flex gap-3 ${
-                                            msg.role === 'user' 
-                                            ? 'bg-blue-600 text-white rounded-tr-none' 
-                                            : 'bg-slate-800 text-slate-100 border border-slate-700 rounded-tl-none'
-                                        }`}>
-                                            <div className="flex-shrink-0 mt-1">
-                                                {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4 text-red-500" />}
+                                ) : (
+                                    messages.map((msg, i) => (
+                                        <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                                            <div className={`flex items-center gap-2 mb-1 text-[10px] uppercase tracking-tighter font-bold ${msg.role === 'user' ? 'text-blue-500' : 'text-red-500'}`}>
+                                                {msg.role === 'user' ? <><User size={10} /> Antragsteller</> : <><Bot size={10} /> Notar Jenz</>}
                                             </div>
-                                            <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                                            <div className={`max-w-[90%] p-4 rounded-2xl text-sm leading-relaxed ${
+                                                msg.role === 'user' 
+                                                ? 'bg-blue-600/10 border border-blue-500/20 text-blue-100 rounded-tr-none' 
+                                                : 'bg-slate-800/50 border border-slate-700/50 text-slate-200 rounded-tl-none'
+                                            }`}>
                                                 {msg.text}
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                                {isLoading && (
-                                    <div className="flex justify-start">
-                                        <div className="bg-slate-800 p-3 rounded-xl rounded-tl-none border border-slate-700 flex items-center gap-2">
-                                            <motion.div 
-                                                animate={{ rotate: 360 }}
-                                                transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                                            >
-                                                <Scale className="w-4 h-4 text-red-500" />
-                                            </motion.div>
-                                            <span className="text-xs text-slate-400">Prüfe Aktenlage...</span>
-                                        </div>
-                                    </div>
+                                    ))
                                 )}
-                                {error && (
-                                    <div className="bg-red-900/20 border border-red-500/50 p-3 rounded-lg text-red-400 text-xs text-center">
-                                        {error}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Input Area */}
-                            <div className="p-4 bg-slate-900 border-t border-slate-700">
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={startListening}
-                                        disabled={isLoading || isListening}
-                                        className={`p-2 rounded-lg transition-all ${
-                                            isListening 
-                                            ? 'bg-red-600 text-white animate-pulse' 
-                                            : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
-                                        }`}
-                                        title="Spracheingabe starten"
-                                    >
-                                        <Mic className="w-5 h-5" />
-                                    </button>
-                                    <input 
-                                        type="text"
-                                        value={input}
-                                        onChange={(e) => setInput(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleAskNotar()}
-                                        placeholder={isListening ? "Höre zu..." : "Was ist vorgefallen?"}
-                                        className="flex-grow bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-red-500 transition-colors"
-                                    />
-                                    <button 
-                                        onClick={() => handleAskNotar()}
-                                        disabled={isLoading || !input.trim()}
-                                        className="bg-red-600 hover:bg-red-700 disabled:bg-slate-700 text-white p-2 rounded-lg transition-colors"
-                                    >
-                                        <Send className="w-5 h-5" />
-                                    </button>
-                                </div>
                             </div>
                         </motion.div>
                     </>
