@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { motion, AnimatePresence } from "framer-motion";
 import { Phone, X, Send, Scale, User, Bot, Mic } from "lucide-react";
 import { Session, Game, Player, View } from '../types';
@@ -20,6 +20,17 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    useEffect(() => {
+        audioRef.current = new Audio();
+        return () => {
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.src = "";
+            }
+        };
+    }, []);
 
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     const elevenLabsApiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
@@ -88,24 +99,27 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
         - Sei strenger in der Kategorie "Wissen" und etwas lockerer/humorvoller bei "Action".
         - Nutze den Gesamtzwischenstand für taktische Urteile (z.B. wenn jemand hoffnungslos hinten liegt).
         - Antworte kurz, förmlich, nutze Begriffe wie "Aktenlage" oder "nach strenger Prüfung".
-        - Fälle am Ende IMMER ein klares Urteil für eine Seite.`;
+        - Fälle am Ende IMMER ein klares Urteil für eine Seite.
+        
+        ANTWORT-FORMAT (JSON):
+        Du antwortest IMMER im JSON-Format mit zwei Feldern:
+        1. "voice": Deine gesprochene Entscheidung für die Sprachausgabe. ABSOLUTES LIMIT: 50 Zeichen. Sei extrem kurz, genervt und präzise. (z.B. 'Punkt für Team Rot. Akte geschlossen.')
+        2. "chat": Deine ausführliche Begründung und Protokollierung für die Akten. Hier kannst du ins Detail gehen.`;
     };
 
     const playTTS = async (text: string) => {
-        if (!elevenLabsApiKey) return;
+        if (!elevenLabsApiKey || !audioRef.current) return;
 
         try {
-            console.log("Starte Audio-Kontext...");
-            console.log("Sende an ElevenLabs...");
             const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'xi-api-key': import.meta.env.VITE_ELEVENLABS_API_KEY,
+                    'xi-api-key': elevenLabsApiKey,
                 },
                 body: JSON.stringify({
                     text,
-                    model_id: "eleven_multilingual_v2",
+                    model_id: "eleven_turbo_v2_5",
                     voice_settings: {
                         stability: 0.5,
                         similarity_boost: 0.75,
@@ -113,21 +127,24 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
                 }),
             });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                console.error(`ElevenLabs API Fehler (Status: ${response.status}):`, errorData);
-                return;
-            }
+            if (!response.ok) return;
 
             const blob = await response.blob();
-            // Explizit als audio/mpeg behandeln, um MIME-Type Fehler zu umgehen
-            const audioBlob = new Blob([blob], { type: 'audio/mpeg' });
-            const url = URL.createObjectURL(audioBlob);
-            const audio = new Audio(url);
-            (audio as any).type = 'audio/mpeg';
+            const url = URL.createObjectURL(blob);
             
-            console.log("Audio bereit, starte Wiedergabe...");
-            await audio.play();
+            return new Promise<void>((resolve) => {
+                const audio = audioRef.current!;
+                audio.src = url;
+                audio.onended = () => {
+                    URL.revokeObjectURL(url);
+                    resolve();
+                };
+                audio.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    resolve();
+                };
+                audio.play().catch(() => resolve());
+            });
         } catch (err) {
             console.error("ElevenLabs Fehler:", err);
         }
@@ -187,10 +204,6 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
         const textToProcess = overrideText || input;
         if (!textToProcess.trim() || isLoading) return;
 
-        // Audio-Kontext für iPad/iOS "scharf" schalten (User Interaction)
-        const unlockAudio = new Audio();
-        unlockAudio.play().catch(() => {});
-
         const userMsg = textToProcess.trim();
         setInput("");
         setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
@@ -203,16 +216,31 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
                 model: "gemini-3-flash-preview",
                 contents: userMsg,
                 config: {
-                    systemInstruction: getSystemInstruction()
+                    systemInstruction: getSystemInstruction(),
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            voice: { type: Type.STRING, description: "Short audio response (max 50 chars)" },
+                            chat: { type: Type.STRING, description: "Detailed chat response" }
+                        },
+                        required: ["voice", "chat"]
+                    }
                 }
             });
 
-            const text = response.text || "Ich habe derzeit keine Aktenlage zu diesem Fall.";
-            setMessages(prev => [...prev, { role: 'bot', text }]);
+            const result = JSON.parse(response.text || "{}");
+            const voiceText = result.voice || "Akte geschlossen.";
+            const chatText = result.chat || "Ich habe derzeit keine Aktenlage.";
+
+            // 1. Jenz spricht (Warten bis fertig)
+            await playTTS(voiceText);
             
-            // Radikale Kürzung: Nur die ersten 5 Wörter nehmen
-            const speechText = text.split(' ').slice(0, 5).join(' ') + "... Akte geschlossen.";
-            playTTS(speechText);
+            // 2. Overlay schließen
+            setIsOpen(false);
+            
+            // 3. Chat-Text hinzufügen (nach dem Schließen)
+            setMessages(prev => [...prev, { role: 'bot', text: chatText }]);
         } catch (err) {
             console.error("Notar API Error:", err);
             setError("Die Leitung in die Zentrale ist aktuell gestört.");
@@ -240,7 +268,15 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
             <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => setIsOpen(true)}
+                onClick={() => {
+                    setIsOpen(true);
+                    // Safari Audio Unlock
+                    if (audioRef.current) {
+                        audioRef.current.play().then(() => {
+                            audioRef.current?.pause();
+                        }).catch(() => {});
+                    }
+                }}
                 className="w-16 h-16 bg-red-600 rounded-full shadow-2xl flex items-center justify-center text-white text-3xl hover:bg-red-700 transition-colors border-4 border-white/20 no-select"
                 title="Rotes Notar-Telefon"
             >
@@ -277,7 +313,13 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
                                     </div>
                                 </div>
                                 <button 
-                                    onClick={() => setIsOpen(false)}
+                                    onClick={() => {
+                                        setIsOpen(false);
+                                        if (audioRef.current) {
+                                            audioRef.current.pause();
+                                            audioRef.current.currentTime = 0;
+                                        }
+                                    }}
                                     className="p-2 hover:bg-slate-700 rounded-full text-slate-400 transition-colors"
                                 >
                                     <X className="w-5 h-5" />
