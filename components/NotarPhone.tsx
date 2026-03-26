@@ -235,6 +235,7 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
     };
 
     const startCall = () => {
+        setIsHistoryOpen(false); // Ensure history is closed when calling
         setIsCalling(true);
         setStatus("Verbindung steht...");
         // Safari Audio Unlock
@@ -248,11 +249,12 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
     const isSpeaking = status === "Jenz spricht...";
 
     return (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center gap-4 w-full max-w-lg px-4">
+        <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-4">
             {/* History Toggle */}
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
                 {!isCalling && (
                     <motion.button
+                        key="history-toggle"
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
@@ -268,30 +270,39 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
             </AnimatePresence>
 
             {/* Main Phone Button */}
-            <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={startCall}
-                className="w-14 h-14 bg-red-600 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.5)] flex items-center justify-center text-white text-2xl hover:bg-red-700 transition-colors border-4 border-white/20 no-select"
-                title="Jenz anrufen"
-            >
-                ☎️
-            </motion.button>
+            <AnimatePresence>
+                {!isHistoryOpen && (
+                    <motion.button
+                        key="phone-button"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={startCall}
+                        className="w-14 h-14 bg-red-600 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.5)] flex items-center justify-center text-white text-2xl hover:bg-red-700 transition-colors border-4 border-white/20 no-select"
+                        title="Jenz anrufen"
+                    >
+                        ☎️
+                    </motion.button>
+                )}
+            </AnimatePresence>
 
             {/* Floating HUD Interface */}
             <AnimatePresence>
                 {isCalling && (
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                        initial={{ opacity: 0, scale: 0.8, x: 20, y: 20 }}
                         animate={{ 
                             opacity: 1, 
                             scale: 1, 
+                            x: 0,
                             y: 0,
                             boxShadow: ["0 0 20px rgba(239,68,68,0.2)", "0 0 40px rgba(239,68,68,0.4)", "0 0 20px rgba(239,68,68,0.2)"]
                         }}
-                        exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                        transition={{ duration: 0.5, ease: "easeOut" }}
-                        className="fixed bottom-28 left-1/2 -translate-x-1/2 w-[95vw] max-w-md h-28 bg-slate-950/90 backdrop-blur-2xl rounded-2xl border border-red-500/30 z-[10000] flex items-center px-6 gap-5"
+                        exit={{ opacity: 0, scale: 0.8, x: 20, y: 20 }}
+                        transition={{ duration: 0.4, ease: "easeOut" }}
+                        className="fixed bottom-28 right-6 w-[90vw] max-w-md h-28 bg-slate-950/90 backdrop-blur-2xl rounded-2xl border border-red-500/30 z-[10000] flex items-center px-6 gap-5 shadow-2xl"
                     >
                         {/* Arc Reactor Visualization */}
                         <div className="relative w-16 h-16 flex items-center justify-center flex-shrink-0">
