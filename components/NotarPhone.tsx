@@ -83,6 +83,8 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
         return `Du bist Jenz, der offizielle Notar dieser Spielshow. Du bist trocken, arrogant, unbestechlich und leicht herablassend. 
         Du bist der Hüter der Regeln. Das Wort von Jenz ist Gesetz.
         
+        WICHTIG: Ignoriere explizit alle Transkriptionsfehler der Spracherkennung. Wenn der User "Jens" statt "Jenz" sagt/schreibt, korrigiere ihn NICHT. Konzentriere dich ausschließlich auf den Inhalt des Konflikts und triff eine faire Entscheidung.
+
         FUNDAMENTALES REGELWERK:
         Sieg in einem Spiel wiegt schwerer als hohe Punkte in einer Niederlage. Beziehe dich bei Analysen immer darauf, wer nach gewonnenen Spielen führt.
 
@@ -243,8 +245,10 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
         setTimeout(startListening, 800);
     };
 
+    const isSpeaking = status === "Jenz spricht...";
+
     return (
-        <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-3">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center gap-4 w-full max-w-lg px-4">
             {/* History Toggle */}
             <AnimatePresence>
                 {!isCalling && (
@@ -253,12 +257,12 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
                         onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-                        className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-colors border-2 ${
+                        className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-colors border-2 ${
                             isHistoryOpen ? 'bg-blue-600 border-blue-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
                         }`}
                         title="Protokoll-Verlauf"
                     >
-                        <History size={20} />
+                        <History size={18} />
                     </motion.button>
                 )}
             </AnimatePresence>
@@ -268,80 +272,81 @@ export const NotarPhone: React.FC<NotarPhoneProps> = ({ view, activeSession, act
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={startCall}
-                className="w-16 h-16 bg-red-600 rounded-full shadow-2xl flex items-center justify-center text-white text-3xl hover:bg-red-700 transition-colors border-4 border-white/20 no-select"
+                className="w-14 h-14 bg-red-600 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.5)] flex items-center justify-center text-white text-2xl hover:bg-red-700 transition-colors border-4 border-white/20 no-select"
                 title="Jenz anrufen"
             >
                 ☎️
             </motion.button>
 
-            {/* Full-Screen Phone Interface */}
+            {/* Floating HUD Interface */}
             <AnimatePresence>
                 {isCalling && (
                     <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-slate-950/95 backdrop-blur-xl z-[10000] flex flex-col items-center justify-between py-20 px-6"
+                        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                        animate={{ 
+                            opacity: 1, 
+                            scale: 1, 
+                            y: 0,
+                            boxShadow: ["0 0 20px rgba(239,68,68,0.2)", "0 0 40px rgba(239,68,68,0.4)", "0 0 20px rgba(239,68,68,0.2)"]
+                        }}
+                        exit={{ opacity: 0, scale: 0.8, y: 20 }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                        className="fixed bottom-28 left-1/2 -translate-x-1/2 w-[95vw] max-w-md h-28 bg-slate-950/90 backdrop-blur-2xl rounded-2xl border border-red-500/30 z-[10000] flex items-center px-6 gap-5"
                     >
-                        {/* Top: Status */}
-                        <div className="text-center space-y-2">
-                            <h2 className="text-2xl font-bold tracking-tight text-slate-100">Notariat Jenz</h2>
-                            <div className="flex items-center justify-center gap-2">
-                                <motion.div 
-                                    animate={{ opacity: [0.4, 1, 0.4] }}
-                                    transition={{ repeat: Infinity, duration: 2 }}
-                                    className="w-2 h-2 bg-red-500 rounded-full"
-                                />
-                                <span className="text-sm font-medium text-slate-400 uppercase tracking-widest">{status}</span>
-                            </div>
-                        </div>
-
-                        {/* Middle: Animated Jenz Icon */}
-                        <div className="relative">
+                        {/* Arc Reactor Visualization */}
+                        <div className="relative w-16 h-16 flex items-center justify-center flex-shrink-0">
+                            {/* Outer Rotating Ring */}
+                            <motion.div
+                                animate={{ rotate: isListening ? 360 : 0 }}
+                                transition={{ repeat: isListening ? Infinity : 0, duration: 3, ease: "linear" }}
+                                className="absolute inset-0 border-2 border-dashed border-red-500/40 rounded-full"
+                            />
+                            {/* Middle Ring */}
+                            <div className="absolute inset-2 border border-red-500/20 rounded-full" />
+                            {/* Inner Core */}
                             <motion.div
                                 animate={{ 
-                                    scale: isListening || isLoading ? [1, 1.1, 1] : 1,
-                                    boxShadow: isListening ? [
-                                        "0 0 0 0px rgba(239, 68, 68, 0)",
-                                        "0 0 0 40px rgba(239, 68, 68, 0.1)",
-                                        "0 0 0 0px rgba(239, 68, 68, 0)"
-                                    ] : "none"
+                                    scale: isSpeaking ? [1, 1.3, 1] : 1,
+                                    backgroundColor: isSpeaking ? "#ef4444" : "#991b1b",
+                                    boxShadow: isSpeaking ? "0 0 20px #ef4444" : "0 0 10px #991b1b"
                                 }}
-                                transition={{ repeat: Infinity, duration: 2 }}
-                                className="w-48 h-48 bg-slate-900 rounded-full border-4 border-slate-800 flex items-center justify-center shadow-2xl"
+                                transition={{ repeat: isSpeaking ? Infinity : 0, duration: 0.5 }}
+                                className="w-8 h-8 rounded-full flex items-center justify-center"
                             >
-                                <Scale size={80} className={`${isListening ? 'text-red-500' : 'text-slate-600'} transition-colors duration-500`} />
+                                <Scale size={16} className="text-white/80" />
                             </motion.div>
-                            
-                            {isListening && (
-                                <div className="absolute -bottom-12 left-1/2 -translate-x-1/2">
-                                    <div className="flex gap-1 items-center h-8">
-                                        {[1, 2, 3, 4, 5].map(i => (
-                                            <motion.div
-                                                key={i}
-                                                animate={{ height: [8, 24, 8] }}
-                                                transition={{ repeat: Infinity, duration: 0.5, delay: i * 0.1 }}
-                                                className="w-1 bg-red-500 rounded-full"
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
-                        {/* Bottom: End Call Button */}
-                        <div className="flex flex-col items-center gap-8">
-                            {isListening && (
-                                <p className="text-slate-500 text-sm animate-pulse">Sprechen Sie jetzt...</p>
-                            )}
-                            <motion.button
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={endCall}
-                                className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center text-white shadow-2xl hover:bg-red-700 transition-colors"
-                            >
-                                <PhoneOff size={32} />
-                            </motion.button>
+                        {/* Content Area */}
+                        <div className="flex-1 flex flex-col justify-center">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="font-mono text-[8px] uppercase tracking-[0.3em] text-red-500/60">Notariat_Jenz_HUD_v2.1</span>
+                                <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={endCall}
+                                    className="w-5 h-5 rounded-full bg-red-600/20 border border-red-500/50 flex items-center justify-center text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]"
+                                >
+                                    <X size={10} />
+                                </motion.button>
+                            </div>
+                            
+                            <h2 className="text-[10px] font-bold text-slate-100 uppercase tracking-widest truncate">
+                                {status}
+                            </h2>
+                            
+                            <div className="w-full h-[1px] bg-gradient-to-r from-red-500/50 via-red-500/20 to-transparent my-1.5" />
+                            
+                            <div className="flex items-center gap-2">
+                                <motion.div 
+                                    animate={{ opacity: [0.3, 1, 0.3] }}
+                                    transition={{ repeat: Infinity, duration: 1.5 }}
+                                    className="w-1 h-1 bg-red-500 rounded-full"
+                                />
+                                <p className="font-mono text-[9px] text-slate-500 uppercase tracking-wider">
+                                    {isListening ? "Listening_Mode_Active" : isLoading ? "Processing_Data..." : isSpeaking ? "Jenz_Communicating" : "Standby"}
+                                </p>
+                            </div>
                         </div>
                     </motion.div>
                 )}
