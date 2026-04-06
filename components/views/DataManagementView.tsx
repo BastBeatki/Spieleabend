@@ -120,11 +120,11 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ players,
         });
     };
 
-     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-            if (file.size > 2 * 1024 * 1024) { // 2MB limit
-                showAlert('Bild zu groß', 'Bitte wähle ein Bild, das kleiner als 2MB ist.');
+            if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                showAlert('Bild zu groß', 'Bitte wähle ein Bild, das kleiner als 10MB ist.');
                 return;
             }
             try {
@@ -132,6 +132,9 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ players,
                 setEditingPlayerAvatar(base64);
             } catch (error) {
                 showAlert('Fehler bei der Bildverarbeitung', 'Das Bild konnte nicht verarbeitet werden.');
+            } finally {
+                // Reset file input value to allow selecting the same file again
+                event.target.value = '';
             }
         }
     };
@@ -149,7 +152,7 @@ export const DataManagementView: React.FC<DataManagementViewProps> = ({ players,
                                 <div className="flex-grow flex items-center gap-4">
                                     <div className="flex flex-col items-center gap-1">
                                         <PlayerAvatar avatar={editingPlayerAvatar} size={64} />
-                                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg" />
+                                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                                         <div className='flex gap-2'>
                                             <button onClick={() => fileInputRef.current?.click()} className="text-xs text-blue-400 hover:underline">Ändern</button>
                                             {editingPlayerAvatar && <button onClick={() => setEditingPlayerAvatar('')} className="text-xs text-red-400 hover:underline">Entfernen</button>}

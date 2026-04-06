@@ -28,19 +28,26 @@ export const Modal: React.FC<ModalProps> = ({ title, onClose, children, buttons,
 
         if (isOpen) {
             document.addEventListener('keydown', handleKeyDown);
-            const focusButton = buttons.find(b => b.autoFocus);
-            if (focusButton) {
-                setTimeout(() => {
-                   const buttonElement = modalRef.current?.querySelector(`button[data-text="${focusButton.text}"]`) as HTMLButtonElement;
-                   buttonElement?.focus();
-                }, 100);
-            }
         }
 
         return () => {
             document.removeEventListener('keydown', handleKeyDown);
         };
-    }, [isOpen, onClose, buttons]);
+    }, [isOpen, onClose]);
+
+    // Separate effect for initial focus to avoid stealing focus on every re-render
+    useEffect(() => {
+        if (isOpen) {
+            const focusButton = buttons.find(b => b.autoFocus);
+            if (focusButton) {
+                const timer = setTimeout(() => {
+                   const buttonElement = modalRef.current?.querySelector(`button[data-text="${focusButton.text}"]`) as HTMLButtonElement;
+                   buttonElement?.focus();
+                }, 100);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [isOpen]); // Only run when isOpen changes
 
 
   if (!isOpen) return null;

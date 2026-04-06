@@ -506,8 +506,8 @@ const EditSessionModal: React.FC<{isOpen: boolean, onClose: () => void, session:
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-            if (file.size > 2 * 1024 * 1024) {
-                setError('Bild zu groß (max. 2MB).');
+            if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                setError('Bild zu groß (max. 10MB).');
                 return;
             }
             try {
@@ -516,6 +516,9 @@ const EditSessionModal: React.FC<{isOpen: boolean, onClose: () => void, session:
                 setError('');
             } catch (error) {
                 setError('Bild konnte nicht verarbeitet werden.');
+            } finally {
+                // Reset file input value to allow selecting the same file again
+                event.target.value = '';
             }
         }
     };
@@ -553,7 +556,7 @@ const EditSessionModal: React.FC<{isOpen: boolean, onClose: () => void, session:
                             {coverImage && <button onClick={() => setCoverImage('')} className="text-white hover:text-red-400">Entfernen</button>}
                         </div>
                     </div>
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg" />
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                 </div>
             </div>
         </Modal>

@@ -144,8 +144,8 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
     const handlePlayerFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-            if (file.size > 2 * 1024 * 1024) {
-                setError('Bild zu groß (max. 2MB).');
+            if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                setError('Bild zu groß (max. 10MB).');
                 return;
             }
             try {
@@ -154,6 +154,9 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
                 setError('');
             } catch (error) {
                 setError('Bild konnte nicht verarbeitet werden.');
+            } finally {
+                // Reset file input value to allow selecting the same file again
+                event.target.value = '';
             }
         }
     };
@@ -161,8 +164,8 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
     const handleSessionFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-             if (file.size > 2 * 1024 * 1024) { // 2MB limit
-                setError('Bild zu groß (max. 2MB).');
+             if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                setError('Bild zu groß (max. 10MB).');
                 return;
             }
             try {
@@ -171,9 +174,17 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
                 setError('');
             } catch (error) {
                 setError('Bild konnte nicht verarbeitet werden.');
+            } finally {
+                // Reset file input value to allow selecting the same file again
+                event.target.value = '';
             }
         }
     };
+
+    const modalButtons = useMemo(() => [
+        { text: 'Abbrechen', onClick: () => setPlayerModalOpen(false), className: 'bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-2 px-5 rounded-lg' },
+        { text: 'Speichern', onClick: handleSavePlayer, className: 'bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-5 rounded-lg transition-all shadow-md hover:shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40', autoFocus: true },
+    ], [handleSavePlayer]);
 
     return (
         <>
@@ -202,7 +213,7 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
                                 </button>
                             )}
                         </div>
-                        <input type="file" ref={sessionFileInputRef} onChange={handleSessionFileChange} className="hidden" accept="image/png, image/jpeg" />
+                        <input type="file" ref={sessionFileInputRef} onChange={handleSessionFileChange} className="hidden" accept="image/*" />
                     </div>
                 </div>
 
@@ -238,17 +249,14 @@ export const SessionSetupView: React.FC<SessionSetupViewProps> = ({ players, nav
                 isOpen={isPlayerModalOpen}
                 title="Neuen Spieler anlegen"
                 onClose={() => setPlayerModalOpen(false)}
-                buttons={[
-                    { text: 'Abbrechen', onClick: () => setPlayerModalOpen(false), className: 'bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-2 px-5 rounded-lg' },
-                    { text: 'Speichern', onClick: handleSavePlayer, className: 'bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-5 rounded-lg transition-all shadow-md hover:shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40', autoFocus: true },
-                ]}
+                buttons={modalButtons}
             >
                 <div className="space-y-4 text-left">
                      {error && <p className="text-red-400 text-center">{error}</p>}
                     <div className="flex items-center gap-4">
                         <div className="flex-shrink-0">
                             <PlayerAvatar avatar={newPlayerAvatar} size={64} />
-                            <input type="file" ref={playerFileInputRef} onChange={handlePlayerFileChange} className="hidden" accept="image/png, image/jpeg" />
+                            <input type="file" ref={playerFileInputRef} onChange={handlePlayerFileChange} className="hidden" accept="image/*" />
                             <button onClick={() => playerFileInputRef.current?.click()} className="w-full text-xs text-center text-blue-400 hover:underline mt-1">Bild...</button>
                         </div>
                         <div className="flex-grow space-y-2">
